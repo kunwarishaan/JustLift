@@ -7,14 +7,14 @@
 
 .game-screen__panel {
   padding: 1rem 1.1rem;
-  border: 1px solid color-mix(in srgb, var(--jl-text) 18%, transparent);
+  border: 1px solid #0a456c;
   border-radius: var(--jl-radius);
-  background: var(--jl-surface);
+  background-color: var(--jl-surface);
   color: var(--jl-text);
 }
 
 .game-screen__panel--strong {
-  background: var(--jl-surface-strong);
+  background-color: var(--jl-surface-strong);
 }
 
 .game-screen h2 {
@@ -127,7 +127,7 @@
   padding: 1rem 1.1rem;
   border: 2px solid var(--jl-accent);
   border-radius: var(--jl-radius);
-  background: var(--jl-surface-strong);
+  background-color: var(--jl-surface-strong);
   color: var(--jl-text);
   font-family: var(--jl-font-display);
   font-size: 1.25rem;
@@ -161,9 +161,9 @@
 .game-screen__name-field input {
   min-width: 0;
   padding: 0.7rem 0.8rem;
-  border: 1px solid color-mix(in srgb, var(--jl-text) 35%, transparent);
+  border: 1px solid #8fb8d4;
   border-radius: var(--jl-radius);
-  background: var(--jl-surface-strong);
+  background-color: var(--jl-surface);
   color: var(--jl-text);
 }
 

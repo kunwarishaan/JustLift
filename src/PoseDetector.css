@@ -12,9 +12,9 @@
   gap: 0.55rem 1.1rem;
   align-items: baseline;
   padding: 0.7rem 0.9rem;
-  border: 1px solid color-mix(in srgb, var(--jl-text) 18%, transparent);
+  border: 1px solid #0a456c;
   border-radius: var(--jl-radius);
-  background: var(--jl-surface-strong);
+  background-color: var(--jl-surface-strong);
   color: var(--jl-text);
 }
 
@@ -34,9 +34,9 @@
 .pose-detector__viewport {
   position: relative;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--jl-text) 18%, transparent);
+  border: 1px solid #0a456c;
   border-radius: var(--jl-radius);
-  background: var(--jl-surface-strong);
+  background-color: var(--jl-surface-strong);
 }
 
 .pose-detector__viewport video {

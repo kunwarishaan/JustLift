@@ -42,8 +42,8 @@
 .app-notice {
   margin: 0 0 1rem;
   padding: 0.85rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--jl-text) 28%, transparent);
+  border: 1px solid #0a456c;
   border-radius: var(--jl-radius);
-  background: var(--jl-surface-strong);
+  background-color: var(--jl-surface-strong);
   color: var(--jl-text);
 }
