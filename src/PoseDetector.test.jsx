@@ -173,7 +173,7 @@ describe('PoseDetector', () => {
     await frame(1000)
     expect(detector.detectForVideo).toHaveBeenCalledOnce()
     expect(detector.detectForVideo).toHaveBeenCalledWith(video, expect.any(Number))
-    expect(onPoseUpdate).toHaveBeenLastCalledWith(landmarks)
+    expect(onPoseUpdate).toHaveBeenLastCalledWith(landmarks, { timestamp: 1000, width: 640, height: 480 })
     expect(canvas.width).toBe(640)
     expect(canvas.height).toBe(480)
     expect(context.clearRect).toHaveBeenCalled()
@@ -187,12 +187,15 @@ describe('PoseDetector', () => {
     await frame(1016)
     expect(detector.detectForVideo).toHaveBeenCalledOnce()
     expect(onPoseUpdate).toHaveBeenCalledTimes(callsAfterFirstFrame + 1)
-    expect(onPoseUpdate).toHaveBeenLastCalledWith(landmarks)
+    // Another display refresh of the same captured frame must retain its
+    // timestamp. The scorer uses this to avoid treating cached poses as motion.
+    expect(onPoseUpdate).toHaveBeenLastCalledWith(landmarks, { timestamp: 1000, width: 640, height: 480 })
+    expect(onPoseUpdate.mock.calls.at(-1)[1]).toBe(onPoseUpdate.mock.calls.at(-2)[1])
 
     videoTime = 2
     await frame(1032)
     expect(detector.detectForVideo).toHaveBeenCalledTimes(2)
-    expect(onPoseUpdate).toHaveBeenLastCalledWith([])
+    expect(onPoseUpdate).toHaveBeenLastCalledWith([], { timestamp: 2000, width: 640, height: 480 })
   })
 
   it('uses a replacement callback without reopening the camera or recreating the detector', async () => {
@@ -209,7 +212,7 @@ describe('PoseDetector', () => {
     expect(mediaPipe.createFromOptions).toHaveBeenCalledOnce()
     expect(detector.close).not.toHaveBeenCalled()
     expect(firstCallback).toHaveBeenCalledTimes(firstCallCount)
-    expect(replacementCallback).toHaveBeenLastCalledWith([])
+    expect(replacementCallback).toHaveBeenLastCalledWith([], { timestamp: 1000, width: 640, height: 480 })
   })
 
   it('shows a visible permission error when webcam access is denied', async () => {
@@ -310,7 +313,7 @@ describe('PoseDetector', () => {
     videoTime = 2
     await frame(1016)
     expect(detector.detectForVideo).toHaveBeenCalledTimes(2)
-    expect(onPoseUpdate).toHaveBeenLastCalledWith([])
+    expect(onPoseUpdate).toHaveBeenLastCalledWith([], { timestamp: 2000, width: 640, height: 480 })
 
     await unmount()
     for (const track of stream.tracks) expect(track.stop).toHaveBeenCalledOnce()

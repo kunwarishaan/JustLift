@@ -1,12 +1,11 @@
+import { getCalibrationProfile } from './calibrationProfiles.js'
+
 // PoseDetector calls onPoseUpdate with ONE flat array of normalized landmarks,
 // not the nested PoseLandmarker result. An empty array means tracking is lost.
 const SIDES = [
   { name: 'left', indices: [11, 13, 15, 23, 25] },
   { name: 'right', indices: [12, 14, 16, 24, 26] },
 ]
-const DOWN_ANGLE = 90
-const UP_ANGLE = 160
-const MIN_VISIBILITY = 0.5
 const EPSILON = 1e-7 // Floating-point tolerance, not motion smoothing.
 
 function isPoint(point) {
@@ -49,116 +48,234 @@ export function calculateAngle(a, b, c) {
   return Math.atan2(crossLength, dot) * 180 / Math.PI
 }
 
-function readSide(landmarks, side) {
-  const points = side.indices.map((index) => landmarks[index])
-  if (!points.every(isPoint)) return null
-  const visibility = points.map((point) => point.visibility === undefined ? 1 : point.visibility)
-  if (!visibility.every(Number.isFinite) || Math.min(...visibility) < MIN_VISIBILITY) return null
-
-  const [shoulder, elbow, wrist, hip, knee] = points
+/** Side-view angles: project into the image plane after correcting aspect.
+ * MediaPipe z is inferred depth; the recorded demo profiles were calibrated
+ * on this 2D projection. Uniform body size, resolution, and translation cancel.
+ * Camera perspective does not cancel: keep the camera side-on for the demo.
+ */
+export function readPoseMeasurement(landmarks, frame = {}, sideName = 'left') {
+  if (!Array.isArray(landmarks)) return null
+  const side = SIDES.find((candidate) => candidate.name === sideName)
+  if (!side) return null
+  const raw = side.indices.map((index) => landmarks[index])
+  if (!raw.every(isPoint)) return null
+  const visibility = raw.map((p) => p.visibility === undefined ? 1 : p.visibility)
+  if (!visibility.every(Number.isFinite)) return null
+  const ratio = Number.isFinite(frame?.width) && Number.isFinite(frame?.height)
+    && frame.width > 0 && frame.height > 0 ? frame.height / frame.width : 1
+  const [shoulder, elbow, wrist, hip, knee] = raw.map((p) => ({ x: p.x, y: p.y * ratio, z: 0 }))
   const elbowAngle = calculateAngle(shoulder, elbow, wrist)
   const backAngle = calculateAngle(shoulder, hip, knee)
-  if (elbowAngle === null || backAngle === null) return null
-  return { side, elbowAngle, deviation: 180 - backAngle, visibility: Math.min(...visibility) }
+  const torsoLength = Math.hypot(shoulder.x - hip.x, shoulder.y - hip.y)
+  if (elbowAngle === null || backAngle === null || torsoLength < Number.EPSILON
+    || Math.abs(knee.x - shoulder.x) <= Number.EPSILON) return null
+  const hipLineY = shoulder.y + (knee.y - shoulder.y) * (hip.x - shoulder.x) / (knee.x - shoulder.x)
+  const signedBodyDeviation = (180 - backAngle) * Math.sign(hip.y - hipLineY)
+  if (!Number.isFinite(signedBodyDeviation)) return null
+  return {
+    side: side.name,
+    elbowAngle,
+    bodyDeviation: 180 - backAngle,
+    signedBodyDeviation,
+    visibility: Math.min(...visibility),
+    bodySlope: Math.abs(Math.atan2(shoulder.y - knee.y, Math.abs(shoulder.x - knee.x))) * 180 / Math.PI,
+    wristBelow: (wrist.y - shoulder.y) / torsoLength,
+  }
 }
 
-function selectSide(landmarks) {
-  const left = readSide(landmarks, SIDES[0])
-  const right = readSide(landmarks, SIDES[1])
-  // Prefer the side with the strongest least-visible joint; ties use the left.
-  if (!left) return right
-  if (!right) return left
-  return right.visibility > left.visibility ? right : left
+export function interpolateScore(value, knots) {
+  if (value <= knots[0][0]) return knots[0][1]
+  for (let i = 1; i < knots.length; i += 1) {
+    const [x, y] = knots[i]
+    const [previousX, previousY] = knots[i - 1]
+    if (value <= x) return previousY + (y - previousY) * (value - previousX) / (x - previousX)
+  }
+  return knots.at(-1)[1]
 }
 
-const clamp01 = (value) => Math.max(0, Math.min(1, value))
-
-function scoreTier(attempt) {
-  // Game scoring policy (0–100), equally weighted:
-  //   Range: 90 degrees of observed elbow travel earns 100; less is linear.
-  //   Alignment: straight earns 100; worst deviation >=45 degrees earns 0.
-  // Extrema over the whole attempt include descent, bottom, and ascent. Using
-  // extrema prevents repeated RAF callbacks or long holds from biasing a mean.
-  const rangeScore = 100 * clamp01((attempt.maxAngle - attempt.minAngle) / 90)
-  const alignmentScore = 100 * clamp01(1 - attempt.worstDeviation / 45)
-  const combined = (rangeScore + alignmentScore) / 2
-
-  // Inclusive lower thresholds: Perfect >=95, Super >=85, Good >=70,
-  // Okay >=50, X <50. These are adjustable game ratings, not clinical grades.
-  if (combined + EPSILON >= 95) return 'Perfect'
-  if (combined + EPSILON >= 85) return 'Super'
-  if (combined + EPSILON >= 70) return 'Good'
-  if (combined + EPSILON >= 50) return 'Okay'
-  return 'X'
+export function gradeRep(elbowTravelDegrees, { maxSagDegrees, maxPikeDegrees }, profileId = 'justin') {
+  const profile = getCalibrationProfile(profileId)
+  if (![elbowTravelDegrees, maxSagDegrees, maxPikeDegrees].every((value) => Number.isFinite(value) && value >= 0)) {
+    return { rangeScore: 0, alignmentScore: 0, sagScore: 0, pikeScore: 0, score: 0, tier: 'X' }
+  }
+  const rangeScore = interpolateScore(elbowTravelDegrees, profile.travelKnots)
+  // Direction matters: sagging below the shoulder–knee line differs from the
+  // small raised-hip baseline in these recordings. Absolute angle alone hid
+  // that distinction, especially in Octavio's Okay and Perfect examples.
+  const sagScore = interpolateScore(maxSagDegrees, profile.sagKnots)
+  const pikeScore = interpolateScore(maxPikeDegrees, profile.pikeKnots)
+  const alignmentScore = Math.min(sagScore, pikeScore)
+  // Equal influence through a geometric mean. A near-zero body-line score
+  // cannot be hidden by deep elbow travel (or vice versa).
+  const combined = Math.sqrt(rangeScore * alignmentScore)
+  // A nearly stationary arm cannot qualify solely from a straight body. These
+  // travel floors sit below each person's shallowest recorded accepted cycle.
+  const score = elbowTravelDegrees + EPSILON < profile.minAcceptedTravelDegrees
+    ? Math.min(49, combined) : combined
+  // Four recorded categories: X <50, Okay >=50, Good >=70, Perfect >=95.
+  // The full 70–95 band is Good; only the calibrated top band is Perfect.
+  // These are demo ratings, not clinical grades.
+  const tier = score + EPSILON >= 95 ? 'Perfect'
+    : score + EPSILON >= 70 ? 'Good' : score + EPSILON >= 50 ? 'Okay' : 'X'
+  return { rangeScore, alignmentScore, sagScore, pikeScore, score, tier }
 }
 
-/**
- * Create one independent counter per player/round. No React, DOM, timers, or IO.
- * processFrame accepts the exact flat array from PoseDetector.onPoseUpdate.
+const POINTS = { X: 0, Okay: 1, Good: 2, Perfect: 4 }
+
+/** One counter per turn, using a named person's calibration.
+ * processFrame(flatLandmarks, {timestamp, width, height}) is pure and synchronous.
+ * Timestamps are milliseconds from the video, not RAF calls. Without metadata,
+ * samples are treated as distinct 30fps frames in a square coordinate space.
  *
- * A descent starts below 160 degrees, becomes "down" at <=90, and completes
- * only on returning to >=160. Starting at the bottom is allowed. An ascent
- * that never reached <=90 is discarded. Stationary frames never add reps.
- *
- * One side stays locked while visible, including between reps. Missing,
- * malformed, degenerate, or low-visibility data cancels the unfinished attempt,
- * preserving repCount;
- * it cannot bridge a tracking gap or splice different arms into one rep.
- * Returns { repCompleted, repCount }, plus tier only on a completion frame.
+ * A rep needs an observed top, a descent of >=12 degrees, and a stable return.
+ * Detection is deliberately separate from grading: a shallow/bent-back cycle
+ * can finish with X. X increments attemptCount only; accepted tiers increment
+ * repCount. Starting halfway through a rep is ignored until a top is observed.
+ * Brief tracking gaps are tolerated; long gaps, standing, and timed-out partial
+ * attempts require a fresh top. Repeated timestamps never change state.
  */
-export function createRepCounter() {
+export function createRepCounter({ profileId = 'justin' } = {}) {
+  const profile = getCalibrationProfile(profileId)
   let repCount = 0
+  let attemptCount = 0
+  let history = Object.freeze([])
+  let top = null
   let attempt = null
-  let previousTop = null
+  let smooth = null
+  let lockedSide = null
+  let topSince = null
+  let returnSince = null
+  let lastTimestamp = null
+  let lastValidTime = null
+  let live = null
+  let topSamples = []
+
+  function clearMotion() {
+    top = attempt = smooth = lockedSide = topSince = returnSince = null
+    live = null
+    topSamples = []
+  }
+  const pending = () => ({ repCompleted: false, attemptCompleted: false, repCount, attemptCount, live, completed: null, history })
+  function usable(sample) {
+    return sample && sample.visibility >= profile.visibility
+  }
 
   return {
-    processFrame(landmarks) {
-      // Keep side continuity at the top, too: replaying a completion frame must
-      // not begin a second rep from an opposite arm that happens to be bent.
-      const side = attempt?.side ?? previousTop?.side
-      const sample = Array.isArray(landmarks)
-        ? (side ? readSide(landmarks, side) : selectSide(landmarks))
-        : null
-
-      if (!sample) {
-        attempt = null
-        previousTop = null
-        return { repCompleted: false, repCount }
+    processFrame(landmarks, frame = {}) {
+      const timestamp = Number.isFinite(frame?.timestamp) ? frame.timestamp : (lastTimestamp ?? -1000 / 30) + 1000 / 30
+      if (lastTimestamp !== null && timestamp <= lastTimestamp) return pending()
+      const dt = lastTimestamp === null ? 1000 / 30 : timestamp - lastTimestamp
+      lastTimestamp = timestamp
+      if (lastValidTime !== null && timestamp - lastValidTime > profile.maxGapMs) clearMotion()
+      let sample
+      if (lockedSide) sample = readPoseMeasurement(landmarks, frame, lockedSide)
+      else {
+        const preferred = readPoseMeasurement(landmarks, frame, profile.preferredSide)
+        const other = readPoseMeasurement(landmarks, frame, profile.preferredSide === 'left' ? 'right' : 'left')
+        sample = usable(preferred) ? preferred : other
       }
-
-      const { elbowAngle, deviation } = sample
+      if (!usable(sample)) {
+        live = null
+        return pending()
+      }
+      // This gate identifies a plausible floor exercise, not its quality.
+      // Sagging/piking remain measurable; standing/getting up cancels a cycle.
+      if (sample.bodySlope > profile.maxBodySlope || sample.wristBelow < profile.minWristBelow) {
+        clearMotion()
+        lastValidTime = timestamp
+        return pending()
+      }
+      lastValidTime = timestamp
+      lockedSide = sample.side
+      const alpha = 1 - Math.exp(-dt / profile.smoothingMs)
+      smooth = smooth ? {
+        ...sample,
+        elbowAngle: smooth.elbowAngle + alpha * (sample.elbowAngle - smooth.elbowAngle),
+        bodyDeviation: smooth.bodyDeviation + alpha * (sample.bodyDeviation - smooth.bodyDeviation),
+        signedBodyDeviation: smooth.signedBodyDeviation + alpha * (sample.signedBodyDeviation - smooth.signedBodyDeviation),
+      } : sample
+      const angle = smooth.elbowAngle
+      const deviation = smooth.bodyDeviation
+      const idle = { minAngle: angle, maxAngle: angle, worstDeviation: deviation,
+        maxSagDegrees: Math.max(0, smooth.signedBodyDeviation), maxPikeDegrees: Math.max(0, -smooth.signedBodyDeviation) }
+      const measure = (extrema) => {
+        const elbowTravelDegrees = extrema.maxAngle - extrema.minAngle
+        return { side: sample.side, elbowAngle: angle, bodyDeviation: deviation,
+          signedBodyDeviation: smooth.signedBodyDeviation,
+          elbowTravelDegrees, worstBodyDeviation: extrema.worstDeviation,
+          maxSagDegrees: extrema.maxSagDegrees, maxPikeDegrees: extrema.maxPikeDegrees,
+          ...gradeRep(elbowTravelDegrees, extrema, profileId),
+          phase: attempt ? 'moving' : top ? 'ready' : 'find-top',
+        }
+      }
+      live = measure(idle)
+      if (!top) {
+        if (angle >= profile.armAngle) {
+          topSince ??= timestamp
+          if (timestamp - topSince + EPSILON >= profile.topHoldMs) {
+            top = { ...smooth, timestamp, peakAngle: angle }
+            topSamples = [{ angle, timestamp }]
+          }
+        } else topSince = null
+        return pending()
+      }
       if (!attempt) {
-        if (elbowAngle >= UP_ANGLE - EPSILON) {
-          // Keep only the latest top frame; idle history belongs to no rep.
-          previousTop = sample
-          return { repCompleted: false, repCount }
+        topSamples.push({ angle, timestamp })
+        topSamples = topSamples.filter((entry) => timestamp - entry.timestamp <= profile.topPeakWindowMs)
+        if (angle > top.elbowAngle || angle >= profile.returnAngle) {
+          top = { ...smooth, timestamp, peakAngle: angle }
         }
-        const top = previousTop?.side === sample.side ? previousTop : sample
+        top.peakAngle = Math.max(...topSamples.map((entry) => entry.angle))
+        if (top.elbowAngle - angle + EPSILON < profile.descentDegrees) return pending()
         attempt = {
-          side: sample.side,
-          phase: 'up',
-          minAngle: Math.min(top.elbowAngle, elbowAngle),
-          maxAngle: Math.max(top.elbowAngle, elbowAngle),
-          worstDeviation: Math.max(top.deviation, deviation),
+          // Idle time at a slightly bent top is not time spent doing the rep.
+          startedAt: Math.max(top.timestamp, timestamp - 500),
+          startAngle: top.elbowAngle,
+          minAngle: angle,
+          maxAngle: top.peakAngle,
+          worstDeviation: Math.max(top.bodyDeviation, deviation),
+          maxSagDegrees: Math.max(0, top.signedBodyDeviation, smooth.signedBodyDeviation),
+          maxPikeDegrees: Math.max(0, -top.signedBodyDeviation, -smooth.signedBodyDeviation),
         }
-        previousTop = null
       }
-
-      attempt.minAngle = Math.min(attempt.minAngle, elbowAngle)
-      attempt.maxAngle = Math.max(attempt.maxAngle, elbowAngle)
+      attempt.minAngle = Math.min(attempt.minAngle, angle)
+      attempt.maxAngle = Math.max(attempt.maxAngle, angle)
       attempt.worstDeviation = Math.max(attempt.worstDeviation, deviation)
-      if (elbowAngle <= DOWN_ANGLE + EPSILON) attempt.phase = 'down'
-
-      if (elbowAngle >= UP_ANGLE - EPSILON) {
-        const tier = attempt.phase === 'down' ? scoreTier(attempt) : null
-        attempt = null
-        previousTop = sample
-        if (tier !== null) {
-          repCount += 1
-          return { repCompleted: true, tier, repCount }
-        }
+      attempt.maxSagDegrees = Math.max(attempt.maxSagDegrees, smooth.signedBodyDeviation)
+      attempt.maxPikeDegrees = Math.max(attempt.maxPikeDegrees, -smooth.signedBodyDeviation)
+      live = measure(attempt)
+      if (timestamp - attempt.startedAt > profile.maxDurationMs) {
+        clearMotion()
+        return pending()
       }
-      return { repCompleted: false, repCount }
+      const returnAngle = Math.min(profile.returnAngle, attempt.startAngle - profile.returnTolerance)
+      if (angle >= returnAngle) returnSince ??= timestamp
+      else returnSince = null
+      if (returnSince === null || timestamp - returnSince + EPSILON < profile.topHoldMs) return pending()
+
+      const durationMs = timestamp - attempt.startedAt
+      const finished = attempt
+      attempt = null
+      returnSince = null
+      top = { ...smooth, timestamp, peakAngle: angle }
+      topSamples = [{ angle, timestamp }]
+      if (durationMs + EPSILON < profile.minDurationMs) return pending()
+
+      const { tier, rangeScore, alignmentScore, score } = gradeRep(live.elbowTravelDegrees, finished, profileId)
+      attemptCount += 1
+      const repCompleted = tier !== 'X'
+      if (repCompleted) repCount += 1
+      const completed = Object.freeze({
+        attemptNumber: attemptCount, repNumber: repCount, accepted: repCompleted,
+        tier, points: POINTS[tier], side: sample.side,
+        minElbowAngle: finished.minAngle, maxElbowAngle: finished.maxAngle,
+        elbowTravelDegrees: live.elbowTravelDegrees, worstBodyDeviation: finished.worstDeviation,
+        maxSagDegrees: finished.maxSagDegrees, maxPikeDegrees: finished.maxPikeDegrees,
+        rangeScore, alignmentScore, score, durationMs,
+        startedAt: finished.startedAt, completedAt: timestamp,
+      })
+      history = Object.freeze([...history, completed])
+      return { repCompleted, attemptCompleted: true, tier, repCount, attemptCount, live, completed, history }
     },
   }
 }

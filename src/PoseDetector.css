@@ -1,36 +1,15 @@
-.pose-detector {
-  width: 100%;
-  max-width: 48rem;
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
-}
-
-.pose-detector__viewport {
-  position: relative;
-  overflow: hidden;
-  background: #17202b;
-  border-radius: 0.5rem;
-}
-
-.pose-detector__viewport video {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: auto 4 / 3;
-}
-
-.pose-detector__viewport canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.pose-detector__error {
-  color: #a11224;
-}
-
-.pose-detector__hint {
-  color: #45515f;
-}
+.pose-detector { width: 100%; font-family: 'Archivo', Arial, sans-serif; line-height: 1.5; }
+.pose-detector__viewport { position: relative; overflow: hidden; background: var(--bg, #171029); }
+.pose-detector__viewport video { display: block; width: 100%; height: auto; aspect-ratio: auto 4 / 3; }
+.pose-detector__viewport canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.pose-detector__error { color: var(--txt, #EDE7FA); }
+.pose-detector__hint { color: var(--dim, #9C8DC0); }
+.camera-background .pose-detector { position: static; max-width: none; }
+.camera-background .pose-detector__viewport { position: fixed; inset: 0; z-index: 0; height: 100%; }
+.camera-background .pose-detector__viewport video,
+.camera-background .pose-detector__viewport canvas { width: 100%; height: 100%; object-fit: contain; }
+.camera-background .pose-detector__viewport video { filter: saturate(0.25) brightness(0.5); }
+.camera-background .pose-detector__viewport canvas { filter: grayscale(1); opacity: 0.85; }
+.camera-background .pose-detector > p[role='status'] { position: fixed; bottom: 8px; left: 28%; right: 28%; z-index: 4; color: var(--dim); text-align: center; font-size: 14px; line-height: 1.4; }
+.camera-background .pose-detector__error { position: fixed; z-index: 5; top: 152px; left: 50%; transform: translateX(-50%); width: min(520px, 80vw); padding: 16px 20px; background: var(--bg-2); border: 1px solid var(--edge-2); font-size: 15px; }
+.camera-background .pose-detector__hint { display: none; }

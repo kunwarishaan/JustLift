@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createRepCounter } from './scoringEngine.js'
-import { createInitialGameState, gameReducer, getWinner } from './gameState.js'
+import { createInitialGameState, gameReducer, getOutcome } from './gameState.js'
+import { getCalibrationProfile } from './calibrationProfiles.js'
 import { createRepAudio } from './repAudio.js'
 
 /** Reusable turn controller. GameScreen only renders this hook's state/actions. */
-export default function useGame({ playerNames, onGameComplete } = {}) {
-  const [game, setGame] = useState(() => createInitialGameState(playerNames))
+export default function useGame({ playerNames, playerGoals, onGameComplete } = {}) {
+  const [game, setGame] = useState(() => createInitialGameState(playerNames, playerGoals))
+  const [live, setLive] = useState(null)
+  const [histories, setHistories] = useState([[], []])
+  const lastPaint = useRef(-Infinity)
+  const hadTracking = useRef(false)
   const gameRef = useRef(game)
   const sessionRef = useRef(null)
   const nextSessionId = useRef(0)
@@ -31,20 +36,35 @@ export default function useGame({ playerNames, onGameComplete } = {}) {
     if (gameRef.current.phase !== 'ready') return
     audioRef.current ??= createRepAudio()
     audioRef.current.unlock()
-    const session = { id: ++nextSessionId.current, counter: createRepCounter() }
+    const player = gameRef.current.players[gameRef.current.currentPlayer]
+    const session = { id: ++nextSessionId.current, counter: createRepCounter({ profileId: player.profileId }) }
     sessionRef.current = session
+    lastPaint.current = -Infinity
+    hadTracking.current = false
+    setLive(null)
     apply({ type: 'START_TURN', sessionId: session.id })
   }, [apply])
 
-  const onPoseUpdate = useCallback((landmarks) => {
+  const onPoseUpdate = useCallback((landmarks, frame) => {
     const session = sessionRef.current
     // Capture the rendered session ID so an old camera's callback can never
     // score for the next player, or for a new game after Play Again.
     if (!session || session.id !== game.sessionId || gameRef.current.phase !== 'active') return
-    const result = session.counter.processFrame(landmarks)
-    if (!result.repCompleted) return
-    if (apply({ type: 'REP_COMPLETED', sessionId: session.id, result })) {
-      audioRef.current?.beep()
+    const result = session.counter.processFrame(landmarks, frame)
+    if (result.attemptCompleted && apply({ type: 'REP_COMPLETED', sessionId: session.id, result })) {
+      const playerIndex = gameRef.current.currentPlayer
+      setHistories((previous) => previous.map((history, index) =>
+        index === playerIndex ? result.history : history))
+      if (result.repCompleted) audioRef.current?.beep()
+    }
+    // Paint at 10 Hz; inference and counting still process every camera frame.
+    // Both meters and awarded tiers come from this one authoritative counter.
+    const now = performance.now()
+    const trackingChanged = Boolean(result.live) !== hadTracking.current
+    if (result.attemptCompleted || trackingChanged || now - lastPaint.current >= 100) {
+      lastPaint.current = now
+      hadTracking.current = Boolean(result.live)
+      setLive(result.live)
     }
   }, [game.sessionId, apply])
 
@@ -64,6 +84,8 @@ export default function useGame({ playerNames, onGameComplete } = {}) {
     sessionRef.current = null
     audioRef.current?.close()
     // Session IDs intentionally keep increasing, even when scores are reset.
+    setLive(null)
+    setHistories([[], []])
     apply({ type: 'PLAY_AGAIN' })
   }, [apply])
 
@@ -73,9 +95,14 @@ export default function useGame({ playerNames, onGameComplete } = {}) {
     audioRef.current = null
   }, [])
 
+  const outcome = game.phase === 'results' ? getOutcome(game.players) : null
   return {
     ...game,
-    winner: game.phase === 'results' ? getWinner(game.players) : null,
+    winner: outcome?.winner ?? null,
+    outcome,
+    calibration: getCalibrationProfile(game.players[game.currentPlayer].profileId),
+    live,
+    histories,
     startTurn,
     endTurn,
     playAgain,

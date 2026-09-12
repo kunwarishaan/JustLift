@@ -1,0 +1,477 @@
+{
+  "version": 1,
+  "method": "Manual visual inspection of AVFoundation contact sheets at exact requested half-second timestamps, supplemented by overview sheets. No MediaPipe-derived counts used as ground truth.",
+  "timestamp_tolerance_seconds": 0.5,
+  "limitations": [
+    "Event times are approximate, not frame-exact labels.",
+    "A completed attempt means a visibly repeated low-to-high movement; X files separate near-straight-arm body dips from elbow-bending attempts.",
+    "Several clips begin after the first descent has already started; initial partial cycles are explicitly marked.",
+    "Filename category is not a label for setup, pauses, standing, or every isolated pose frame."
+  ],
+  "clips": {
+    "justin_perfect.mov": {
+      "label": "Perfect",
+      "person": "Justin",
+      "duration_seconds": 60.34047,
+      "manual_completed_attempts": 11,
+      "count_confidence": "high",
+      "bottom_times_seconds": [
+        1.3,
+        4.6,
+        8,
+        11,
+        19.7,
+        24.3,
+        28.3,
+        33,
+        36.6,
+        40.3,
+        44
+      ],
+      "completion_times_seconds": [
+        2.4,
+        5.5,
+        9,
+        12,
+        20.5,
+        25,
+        29.5,
+        34,
+        37.5,
+        41.5,
+        45
+      ],
+      "calibration_windows_seconds": [
+        [
+          0,
+          12.1
+        ],
+        [
+          18.8,
+          45.5
+        ]
+      ],
+      "exclude_windows": [
+        {
+          "start": 12.1,
+          "end": 18.8,
+          "reason": "extended top-plank pause"
+        },
+        {
+          "start": 45.9,
+          "end": 60.34047,
+          "reason": "get-up then standing"
+        }
+      ],
+      "notes": "Half-second exact AVFoundation frames visually confirm 11 cycles; event times approximate within ~0.5s."
+    },
+    "justin_good.mov": {
+      "label": "Good",
+      "person": "Justin",
+      "duration_seconds": 26.8365,
+      "manual_completed_attempts": 10,
+      "count_confidence": "high",
+      "fully_visible_cycles": 9,
+      "initial_partial_cycle": true,
+      "bottom_times_seconds": [
+        0.2,
+        2,
+        4.6,
+        7.5,
+        10,
+        12.5,
+        15,
+        18,
+        20.5,
+        23
+      ],
+      "completion_times_seconds": [
+        1,
+        3,
+        5.5,
+        8.5,
+        11,
+        13.5,
+        16,
+        19,
+        21.5,
+        24
+      ],
+      "calibration_windows_seconds": [
+        [
+          1,
+          24.1
+        ]
+      ],
+      "exclude_windows": [
+        {
+          "start": 24.4,
+          "end": 26.8365,
+          "reason": "get-up and standing"
+        }
+      ],
+      "notes": "Ten visible rise completions. First descent begins before clip; first frame already low/bent and extends by ~1s. Remaining nine cycles fully visible. Shallower elbow bend than Perfect."
+    },
+    "justin_ok.mov": {
+      "label": "Okay",
+      "person": "Justin",
+      "duration_seconds": 41.13819,
+      "manual_completed_attempts": 10,
+      "count_confidence": "high",
+      "fully_visible_cycles": 9,
+      "initial_partial_cycle": true,
+      "bottom_times_seconds": [
+        0,
+        3.2,
+        6.2,
+        10,
+        13,
+        16.5,
+        20.5,
+        24.6,
+        28,
+        32
+      ],
+      "completion_times_seconds": [
+        1.5,
+        4.5,
+        7.8,
+        11.5,
+        14.5,
+        18,
+        22.5,
+        25.5,
+        29.7,
+        33.5
+      ],
+      "calibration_windows_seconds": [
+        [
+          1.6,
+          24
+        ],
+        [
+          26.5,
+          34
+        ]
+      ],
+      "exclude_windows": [
+        {
+          "start": 34.4,
+          "end": 41.13819,
+          "reason": "kneeling/get-up/non-rep remainder"
+        }
+      ],
+      "notes": "Ten visible rise completions, initial descent clipped. Most ascents show deliberate waist sag/cobra movement. Cycle ~24.3–25.5s appears straighter and should not be forced to Okay merely from filename."
+    },
+    "justin_X.mov": {
+      "label": "X",
+      "person": "Justin",
+      "duration_seconds": 37.70443,
+      "manual_completed_attempts": 11,
+      "count_confidence": "high for deliberate movement cycles",
+      "conventional_pushup_count": null,
+      "movement_groups": [
+        {
+          "kind": "nearly straight-arm sag/cobra body dip, invalid push-up attempt",
+          "count": 5,
+          "window_seconds": [
+            0,
+            15.6
+          ],
+          "extreme_times_seconds": [
+            1,
+            4.3,
+            7.8,
+            11,
+            14.3
+          ],
+          "return_times_seconds": [
+            2.5,
+            5.5,
+            9,
+            12.5,
+            15.5
+          ]
+        },
+        {
+          "kind": "raised-hip pike/head dip with elbow flexion",
+          "count": 6,
+          "window_seconds": [
+            17.4,
+            32.2
+          ],
+          "bottom_times_seconds": [
+            18.2,
+            20.7,
+            23.4,
+            25.8,
+            28.3,
+            30.9
+          ],
+          "completion_times_seconds": [
+            19,
+            21.5,
+            24,
+            26.5,
+            29,
+            32
+          ]
+        }
+      ],
+      "calibration_windows_seconds": [
+        [
+          0,
+          15.6
+        ],
+        [
+          17.4,
+          32.2
+        ]
+      ],
+      "exclude_windows": [
+        {
+          "start": 15.6,
+          "end": 17.4,
+          "reason": "top pause/change of movement style"
+        },
+        {
+          "start": 32.2,
+          "end": 35.4,
+          "reason": "top-plank pause"
+        },
+        {
+          "start": 35.5,
+          "end": 37.70443,
+          "reason": "get-up/standing"
+        }
+      ],
+      "notes": "Do not force an elbow-flexion rep counter to produce 11: first five are mostly hip/body movement with near-straight arms. These are deliberate negative examples, not setup. Later six show elbow bending but severely raised hips."
+    },
+    "octavio_perfect.mov": {
+      "label": "Perfect",
+      "person": "Octavio",
+      "duration_seconds": 39.40465,
+      "manual_completed_attempts": 10,
+      "count_confidence": "high",
+      "fully_visible_cycles": 9,
+      "initial_partial_cycle": true,
+      "bottom_times_seconds": [
+        0.8,
+        4.5,
+        8,
+        12,
+        15.6,
+        19.3,
+        22.6,
+        26.2,
+        29.7,
+        33.1
+      ],
+      "completion_times_seconds": [
+        1.9,
+        5.5,
+        9,
+        13,
+        17,
+        20.5,
+        24,
+        27.5,
+        31,
+        34.5
+      ],
+      "calibration_windows_seconds": [
+        [
+          1.9,
+          34.8
+        ]
+      ],
+      "exclude_windows": [
+        {
+          "start": 35.5,
+          "end": 39.40465,
+          "reason": "kneel/get-up/standing"
+        }
+      ],
+      "notes": "First descent underway at t0; bottom and ascent visible. Ten completions total, nine fully observed top-bottom-top cycles. Regular short top holds, no extended pause."
+    },
+    "octavio_good.mov": {
+      "label": "Good",
+      "person": "Octavio",
+      "duration_seconds": 46.60552,
+      "manual_completed_attempts": 11,
+      "count_confidence": "high",
+      "fully_visible_cycles": 11,
+      "initial_partial_cycle": false,
+      "bottom_times_seconds": [
+        3.7,
+        7.5,
+        10.9,
+        14.9,
+        18.9,
+        22.8,
+        26.5,
+        30,
+        34,
+        37.5,
+        40.9
+      ],
+      "completion_times_seconds": [
+        5,
+        9,
+        12.4,
+        16.4,
+        20.5,
+        24,
+        27.7,
+        31.5,
+        35.5,
+        39,
+        42.5
+      ],
+      "calibration_windows_seconds": [
+        [
+          2,
+          42.6
+        ]
+      ],
+      "exclude_windows": [
+        {
+          "start": 0,
+          "end": 2,
+          "reason": "initial top-plank hold; no rep yet"
+        },
+        {
+          "start": 42.9,
+          "end": 46.60552,
+          "reason": "kneeling/get-up"
+        }
+      ],
+      "notes": "Eleven fully visible cycles; no long middle pause. Shallow relative to Perfect. A second person crosses background ~12.9–17.5s; check tracking identity for these frames."
+    },
+    "octavio_ok.mov": {
+      "label": "Okay",
+      "person": "Octavio",
+      "duration_seconds": 34.50408,
+      "manual_completed_attempts": 8,
+      "count_confidence": "high",
+      "fully_visible_cycles": 7,
+      "initial_partial_cycle": true,
+      "bottom_times_seconds": [
+        0.5,
+        4.6,
+        8.5,
+        12.5,
+        16.5,
+        20,
+        23.5,
+        27.5
+      ],
+      "completion_times_seconds": [
+        2.5,
+        6.5,
+        10.5,
+        14.5,
+        18,
+        21.8,
+        25.5,
+        29.5
+      ],
+      "calibration_windows_seconds": [
+        [
+          2.5,
+          29.6
+        ]
+      ],
+      "exclude_windows": [
+        {
+          "start": 29.9,
+          "end": 34.50408,
+          "reason": "kneeling/get-up/standing"
+        }
+      ],
+      "notes": "Eight rise completions, first descent predates clip with bottom hold ~0–1s. Deliberate sagging/cobra-like ascents. Final ascent extends elbows but knees lower immediately afterwards, so completion~29.5s is a valid attempt before kneeling."
+    },
+    "octavio_X.mov": {
+      "label": "X",
+      "person": "Octavio",
+      "duration_seconds": 37.40441,
+      "manual_completed_attempts": 10,
+      "count_confidence": "high for deliberate movement cycles",
+      "conventional_pushup_count": null,
+      "movement_groups": [
+        {
+          "kind": "nearly straight-arm sag/cobra body dip, invalid push-up attempt",
+          "count": 5,
+          "window_seconds": [
+            2.2,
+            18.1
+          ],
+          "extreme_times_seconds": [
+            3.7,
+            7.2,
+            10.3,
+            13.7,
+            17
+          ],
+          "return_times_seconds": [
+            5,
+            8.5,
+            11.8,
+            15,
+            18
+          ]
+        },
+        {
+          "kind": "raised-hip pike/head dip with elbow flexion",
+          "count": 5,
+          "window_seconds": [
+            19.4,
+            33.8
+          ],
+          "bottom_times_seconds": [
+            20.4,
+            23.3,
+            26.4,
+            29.6,
+            32.8
+          ],
+          "completion_times_seconds": [
+            21.5,
+            24.4,
+            27.5,
+            30.9,
+            33.5
+          ]
+        }
+      ],
+      "calibration_windows_seconds": [
+        [
+          2.2,
+          18.1
+        ],
+        [
+          19.4,
+          33.8
+        ]
+      ],
+      "exclude_windows": [
+        {
+          "start": 0,
+          "end": 2.2,
+          "reason": "initial top hold before movement"
+        },
+        {
+          "start": 18.1,
+          "end": 19.4,
+          "reason": "hand repositioning/change of movement style"
+        },
+        {
+          "start": 33.9,
+          "end": 37.40441,
+          "reason": "get-up/standing"
+        }
+      ],
+      "notes": "Five deliberate straight-arm body dips plus five raised-hip elbow-bending attempts. Early body dips are useful invalid-attempt/false-positive examples, not a required elbow-counter target."
+    }
+  }
+}

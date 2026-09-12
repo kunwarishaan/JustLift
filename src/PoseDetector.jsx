@@ -56,6 +56,9 @@ function cameraErrorMessage(error) {
  * Emits the first person's 33 normalized, unmirrored landmarks (x, y, z,
  * visibility), or [] when no pose is available. Called every animation frame
  * while running; inference only runs when the camera provides a new frame.
+ * The second argument contains the capture timestamp and dimensions. Cached
+ * RAF callbacks retain the same timestamp so scoring never treats them as
+ * extra camera frames. The original flat landmark array is unchanged.
  */
 export default function PoseDetector({ onPoseUpdate }) {
   const videoRef = useRef(null)
@@ -80,6 +83,7 @@ export default function PoseDetector({ onPoseUpdate }) {
     let frameId = null
     let lastVideoTime = -1
     let landmarks = []
+    let frameInfo = null
 
     function releaseResources() {
       if (frameId !== null) cancelAnimationFrame(frameId)
@@ -101,6 +105,7 @@ export default function PoseDetector({ onPoseUpdate }) {
       }
       context?.clearRect(0, 0, canvas.width, canvas.height)
       landmarks = []
+      frameInfo = null
     }
 
     function fail(message) {
@@ -127,10 +132,16 @@ export default function PoseDetector({ onPoseUpdate }) {
           if (video.currentTime !== lastVideoTime) {
             landmarks = detector.detectForVideo(video, timestamp).landmarks[0] ?? []
             lastVideoTime = video.currentTime
+            frameInfo = {
+              timestamp: video.currentTime * 1000,
+              width: video.videoWidth,
+              height: video.videoHeight,
+            }
             drawPose(context, canvas, landmarks)
           }
         } else {
           landmarks = []
+          frameInfo = null
           lastVideoTime = -1
           context.clearRect(0, 0, canvas.width, canvas.height)
         }
@@ -140,7 +151,7 @@ export default function PoseDetector({ onPoseUpdate }) {
       }
 
       frameId = requestAnimationFrame(renderFrame)
-      onPoseUpdateRef.current?.(landmarks)
+      onPoseUpdateRef.current?.(landmarks, frameInfo)
     }
 
     async function start() {
@@ -157,7 +168,7 @@ export default function PoseDetector({ onPoseUpdate }) {
       try {
         const camera = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         })
         // getUserMedia cannot be aborted; stop a stream that arrives after unmount.
         if (disposed || stopped) {

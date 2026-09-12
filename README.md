@@ -1,204 +1,190 @@
 # Just Lift
 
-A two-player local push-up web app built with Vite and React in plain JavaScript.
+A local, sequential two-player exercise game built with Vite and React in plain
+JavaScript. The Tempo interface shows a live camera, rep history, form readouts,
+personal goal bars, an illustrated exercise catalogue, and final results. Names,
+goals, optional weights, and game history stay in
+this browser's localStorage; no account service or backend is required.
 
-The app includes a playable two-player push-up game with a live webcam, pose
-debugging overlay, rep counting, and form-based points. Its minimal game screen
-is a functional harness that can be replaced without rewriting the turn logic.
-Optional player names and completed-game history are stored locally in the
-browser, with no account service or backend.
+## Run it
 
-## Development
-
-Use Node.js 22.12+ (Node.js 22.20.0 was used for setup).
+Use Node.js 22.12 or newer.
 
 ```sh
 npm install
 npm run dev
 ```
 
-## Production build
+Open the local URL printed by Vite. Camera access requires localhost or HTTPS.
 
 ```sh
+npm test
 npm run build
 npm run preview
 ```
 
-The production build is written to `dist/`.
+The production build is written to `dist/`. The original `demo_videos/` movies
+and recorded test fixtures are not included in the production bundle.
 
-## Pose detector
+## Demo setup and rules
 
-`App.jsx` mounts `LocalGame.jsx`, which wraps `GameScreen.jsx` with optional name
-entry and Stats. `GameScreen` mounts `PoseDetector.jsx` only during an active
-turn. Camera access starts when you select **Start Turn**; allow the
-browser's camera permission prompt. Use localhost or HTTPS for webcam
-access. The video is muted and plays inline, and microphone access is never requested.
+Choose from 24 exercises organized by Chest, Back, Biceps, Triceps, Shoulders,
+and Legs using **Change exercise** on the "Make every rep count" screen. The
+selected mode applies to both players and is locked once the first turn starts.
+Each exercise has a gray/red anatomical illustration showing the person and
+equipment. Illustrations are served by [ExerciseDB's public image service](https://oss.exercisedb.dev/)
+and require an internet connection; no image library is bundled with the app.
+The browser draws one GIF frame onto a canvas and keeps it still, including
+under reduced motion. These display-only images do not enable another tracking
+mode. Image failures show an explicit placeholder instead of a broken image.
+
+Each player can also enter an optional weight in kg or lb beside their rep goal.
+An empty or zero weight displays as Bodyweight. Modes and weights are UI settings
+and saved workout metadata; they do not select another detector or affect rep
+counts, form grades, goal credit, or winner calculation. The current calibrated
+tracking implementation remains for push-ups. Use Push-ups for the live demo.
+
+1. **Player 1 uses Justin's calibration; Player 2 uses Octavio's.** Display
+   names are optional and do not change which calibration is used. Set each
+   player's goal between 1 and 999 reps. Skipping names preserves the goals.
+2. Use the same camera position, side-on orientation, and framing as the demo
+   recordings. Keep shoulders, elbows, wrists, hips, and knees visible. Select
+   **Start Turn**, allow the camera, and hold a straight-arm top briefly before
+   the first descent. A rep already underway when tracking starts is ignored.
+3. Okay, Good, and Perfect each add one rep and fill the goal bar. They
+   earn 1, 2, and 4 points respectively. X feedback adds no reps or points.
+   Accepted reps produce a visual pulse and a synthesized beep.
+4. **End Turn** locks the first player's result and releases the camera. The
+   second player then takes their turn. There is no turn time limit; reps above
+   the goal can continue earning points while the bar remains full.
+5. If only one player reaches their goal, that player wins regardless of points.
+   If both reach their goals, higher points wins, with equal points a tie.
+   If neither reaches their goal, there is no winner.
+6. **Play Again** keeps the names, goals, weights, and exercise. **Change goals**, available before
+   the first turn and after results, returns to setup without reloading. Goals
+   are locked between the two players' turns.
+
+These are personalized demo profiles, not a universal form classifier. The
+[calibration report](docs/demo-calibration.md) explains the measured thresholds,
+independent video annotations, replay results, and limitations. It includes the
+one visibly straighter rep in Justin's Okay video that receives Good. A fresh
+mixed rehearsal with the same camera setup is still needed to check live
+performance beyond the recordings used for calibration.
+
+## Camera and scoring interfaces
+
+`PoseDetector.jsx` mounts only during an active turn. Its callback keeps the
+original flat array of 33 normalized MediaPipe landmarks, or an empty array
+when no pose is detected. The second argument adds actual video dimensions and
+the capture timestamp in milliseconds:
 
 ```jsx
-import PoseDetector from './PoseDetector.jsx'
-
-function handlePoseUpdate(landmarks) {
-  // One flat array of 33 MediaPipe landmarks, or [] if no pose is available.
-  // For example: landmarks[11] is the left shoulder.
+function handlePoseUpdate(landmarks, frame) {
+  // frame: { timestamp, width, height }, or null if the video is unavailable.
+  // landmarks[11] is the left shoulder: { x, y, z, visibility, ... }.
 }
 
 <PoseDetector onPoseUpdate={handlePoseUpdate} />
 ```
 
-The callback runs every animation frame while tracking is active. Inference runs
-only on new video frames; intervening animation frames reuse the latest result.
-Each landmark contains `x`, `y`, `z`, and `visibility` in MediaPipe's normalized
-image coordinate system. Coordinates and the preview are unmirrored. The overlay
-uses the video's intrinsic dimensions and scales with it without cropping.
-Yellow markers highlight shoulders (11–12), elbows (13–14), wrists (15–16),
-hips (23–24), and knees (25–26). Low-visibility points are hidden in the overlay
-but remain in callback data so consumers can choose their confidence threshold.
+The callback runs every animation frame. Inference runs only for a new video
+frame; cached callbacks reuse the same capture timestamp. The preview and
+overlay are unmirrored, use the same intrinsic dimensions, and scale together.
+Camera permission denial, missing cameras, and detector failures have visible
+messages. Unmounting cancels the animation loop, stops every camera track, and
+closes the detector, including resources that finish loading after unmount.
+Microphone access is never requested.
 
-Camera denial, missing/busy cameras, model failures, and interrupted tracking show
-visible errors. On failure or unmount, the component cancels its animation loop,
-stops camera tracks, and closes the detector, including resources that finish
-initializing after unmount. Changing the callback does not restart tracking.
-
-All inference happens in the browser in `VIDEO` mode. No frames or landmarks are
-uploaded. MediaPipe is pinned to `0.10.21`, whose runtime does not include the
-usage telemetry present in newer releases. Review that behavior before upgrading.
-The runtime WASM files are copied from the installed package before `dev` and
-`build`; the model is included in `public/models/`. Both load from the app's own
-origin, with no external runtime services or CDN downloads.
-
-The included model is Google's
-[Pose Landmarker Lite, float16, version 1](https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task).
+Inference uses the locally installed `@mediapipe/tasks-vision@0.10.21` in VIDEO
+mode, CPU delegate, and the local Pose Landmarker Lite model. The WASM files are
+copied into `public/mediapipe/wasm` before dev/build; the model is in
+`public/models/`. No camera frames or landmarks are uploaded. The interface
+loads its fonts separately; inference assets load from the app's own origin.
 See the [MediaPipe web guide](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker/web_js)
 for the model API and coordinate definitions.
 
-## Scoring engine
-
-`src/scoringEngine.js` has no React or browser dependencies. Create a counter
-once per player/round and feed it the landmarks from `onPoseUpdate`:
+The scoring engine is pure JavaScript with no React, DOM, timers, or IO:
 
 ```js
-import { createRepCounter } from './scoringEngine.js'
+import { createRepCounter } from './src/scoringEngine.js'
 
-const counter = createRepCounter()
-
-function handlePoseUpdate(landmarks) {
-  const result = counter.processFrame(landmarks)
-  // Always: { repCompleted, repCount }
-  // On completion: also { tier: 'X' | 'Okay' | 'Good' | 'Super' | 'Perfect' }
+const counter = createRepCounter({ profileId: 'justin' }) // or 'octavio'
+function handlePoseUpdate(landmarks, frame) {
+  const result = counter.processFrame(landmarks, frame)
+  if (result.attemptCompleted) {
+    // tier, repCount, attemptCount, completed diagnostics, and history.
+    // repCompleted is false for X and true for accepted tiers.
+  }
 }
 ```
 
-The counter enters down at an elbow angle of 90° or less and completes one rep
-on returning to 160° or more. A starting down position is accepted. It selects
-the more visible complete body side when tracking begins and keeps that side
-while it remains reliable, including between reps.
-Missing or unreliable landmarks cancel an unfinished rep without losing the
-completed count. Frames held at the same position cannot add duplicate reps.
+Pass the detector's metadata unchanged. Scoring corrects the image aspect ratio
+and uses side-view 2D angles, rather than absolute pixel distances or inferred z.
+`calculateAngle(a, b, c)` remains available separately for general 3D vector math.
+Without metadata, the counter assumes distinct 30fps samples in a square
+coordinate space, which is mainly useful for synthetic fixtures.
 
-Scores equally weight elbow travel (90° of observed range earns full credit)
-and the worst shoulder–hip–knee deviation from 180° during the attempt (45° or
-more loses all alignment credit). Tiers are X below 50, Okay from 50, Good from
-70, Super from 85, and Perfect from 95. These game thresholds are documented in
-the module for later tuning; they have not been calibrated against recordings.
+Movement detection and form grading are separate. A visible top, sufficient
+elbow movement, and a stable return define an attempt. Grading uses calibrated
+elbow travel plus signed shoulder-hip-knee alignment: sagging and piking have
+separate tolerances. Very small excursions cannot qualify through alignment
+alone. Repeated timestamps cannot add reps; short tracking gaps are tolerated,
+while long gaps, standing, and timed-out attempts require a fresh top.
 
-`calculateAngle(a, b, c)` is also exported for three-dimensional vector angles.
-It returns `null` for invalid or degenerate points. The detector currently sends
-normalized image coordinates, so scores use that coordinate space. For
-aspect-corrected geometry, scale each landmark's `y` by the actual video height
-divided by its width before calling the engine. This API does not receive video
-dimensions and does not assume the camera's requested resolution was granted.
+`useGame.js` owns the counter, turn lifecycle, session guards, audio, and HUD
+measurements. `gameState.js` contains pure scoring and outcome transitions.
+`GameScreen.jsx` renders them through a thin `useTurnPresentation` adapter.
+There is one authoritative counter per turn, so the displayed meters and tier
+cannot be produced by different scoring algorithms. Old camera callbacks are
+ignored immediately after End Turn, including during batched React updates.
+Reduced motion disables the slab and frame-edge animation while keeping tier
+feedback visible.
 
-## Two-player game
+## Local profiles and history
 
-1. Enter optional names and select **Continue**, or select **Skip names** to use
-   Player 1 and Player 2. Player 1 then selects **Start Turn** and performs
-   push-ups in view of the camera.
-2. Each completed rep updates the live count and latest tier, pulses the tier
-   label, and plays a short synthesized beep when browser audio is available.
-3. **End Turn** locks Player 1's score, releases the webcam, and readies Player 2.
-4. Player 2 starts and ends their own turn. Results show both final scores and
-   the winner or tie. **Play Again** resets both players to a fresh game with
-   the same names.
+Names are trimmed and limited to 40 characters. Duplicate names are allowed;
+player slots and calibration IDs remain distinct. These are local preferences,
+not passwords, authentication, or automatic person recognition. Goals can be
+increased manually between games, and Stats retains each game's goal and result.
 
-Turns have no time limit. Only completed reps score; an unfinished rep is
-discarded when the turn ends. Points are summed using X=0, Okay=1, Good=2,
-Super=3, Perfect=4. An X still counts as a completed rep and triggers feedback.
-Ending a turn with no reps is allowed, including a 0–0 tie.
+Storage uses these versioned keys:
 
-The implementation separates responsibilities so the UI can be replaced:
+- `just-lift:player-names:v1`: last submitted names; Skip does not overwrite them.
+- `just-lift:player-goals:v1`: last selected goals.
+- `just-lift:workout-settings:v1`: selected exercise and each player's optional
+  weight/unit. Skipping names retains these settings.
+- `just-lift:game:v2:<id>`: a completed game snapshot with date, each player's
+  name/profileId/goal/repCount/attemptCount/score, winner, and outcome. New records
+  also include `workout: { exerciseId, loads }`; older records remain readable.
+- `just-lift:game:v1:<id>`: older points-only records remain readable as recorded.
 
-- `gameState.js`: pure state transitions, tier point values, and winner selection.
-- `useGame.js`: turn lifecycle, one fresh rep counter per turn, and guarded pose
-  callbacks. Reuse this hook to build a different screen layout. Scores are
-  updated only for newly completed reps, not on every webcam frame. Optional
-  `playerNames` initialize the names, and `onGameComplete(players)` runs once
-  on the accepted transition into results.
-- `GameScreen.jsx` / `.css`: controls, scoreboard, tier pulse, and results.
-- `repAudio.js`: Web Audio oscillator/gain beeps, unlocked in the Start Turn
-  click handler. Audio failures do not block play. Nodes and contexts are
-  released when a turn ends or the screen unmounts; no audio files are loaded.
+Results are saved once after both turns. Unfinished games are not saved. Stats
+reads history newest first without resetting the current game. Invalid records
+are skipped with a message; unrelated browser data is untouched. Blocked/full
+storage cannot stop play. History belongs to this browser and site address,
+so changing the port or clearing site data changes which history is available.
 
-Camera callbacks from ended turns are ignored immediately, even before React
-finishes unmounting the detector. Each new turn gets a distinct session ID, so
-late callbacks cannot score for another player or a replay. The visual pulse
-respects the browser's reduced-motion preference.
+## Verification
 
-## Optional names and local history
+Unit tests cover geometry, calibrated cycles and tiers, timestamp handling,
+tracking recovery, goal outcomes, camera/audio cleanup, and storage versions.
+Integration tests exercise the real game hook and scoring engine with timed
+joint geometry through both turns, results, edits, and replay. Camera/audio IO
+is mocked in those tests.
 
-Submitted names are trimmed, limited to 40 characters, and remembered for the
-next visit. Either field can be left blank to use its Player 1/Player 2 default.
-**Skip names** always uses those defaults and leaves remembered names untouched.
-These are local display names, without passwords or sign-in. Identical names
-are allowed; player slots remain distinct throughout the game and history.
+Catalogue tests cover all groups, search, selection, keyboard focus, dismissal,
+and cleanup. Workout tests cover optional/invalid weights, kg/lb persistence,
+shared-mode locking, and unchanged scoring with different loads. Existing
+`LocalGame.test.jsx` expectations were updated for the exercise-neutral region
+label and added workout metadata; `GoalUi.test.jsx` callback expectations now
+include optional loads. Existing scoring and winner assertions are unchanged.
+`ExerciseCatalogue.test.jsx` now checks the anatomical image wrapper instead of
+an SVG and uses the new source-credit link as the last keyboard-focus target.
 
-Every completed game, including guest and tied games, saves a snapshot with
-its completion date, both names and scores, and winner. Unfinished games are
-not saved. **Stats** is available from name entry and results and reads saved
-games from localStorage on each visit, newest first. **Back** restores the
-previous screen without resetting scores or saving the result again.
-
-Storage uses versioned keys owned by this app:
-
-- `just-lift:player-names:v1`: the two most recently submitted names.
-- `just-lift:game:v1:<unique-game-id>`: one immutable completed-game record.
-
-Each record has this shape (`winner` is slot `0`, slot `1`, or `null` for a tie):
-
-```json
-{
-  "version": 1,
-  "id": "example-game-id",
-  "date": "2026-09-12T14:30:00.000Z",
-  "players": [{ "name": "Ada", "score": 8 }, { "name": "Sam", "score": 5 }],
-  "winner": 0
-}
-```
-
-Game IDs prevent repeated names or later rounds from overwriting earlier games.
-Repeated saves of the same record are harmless. Reads validate stored records,
-skip damaged entries with a message, and leave unrelated localStorage data
-untouched. Blocked or full storage cannot interrupt the core game; failures
-are reported while final scores remain visible. History is not automatically
-trimmed. It belongs to this browser and site address and is removed if that
-site's browser data is cleared.
-
-`gameStorage.js` owns persistence and validation. `LocalGame.jsx` connects the
-optional screens and saving to the existing game. `PlayerSetup.jsx` and
-`StatsView.jsx` contain their layouts. `GameScreen` and `useGame` also continue
-to work directly without those optional props or any localStorage access.
-
-## Tests
+The recorded regression suite replays 9,725 cached MediaPipe frames from all
+eight movies, including missing detections, setup, pauses, and standing. This
+checks behavior on the calibration recordings, not accuracy on unseen footage:
 
 ```sh
-npm test
+npm test -- src/demoCalibration.test.js
 ```
-
-Component tests mock the camera and MediaPipe to cover frame delivery, error
-handling, callback updates, and cleanup. Scoring tests use synthetic landmarks
-to check angles, rep transitions, form tiers, and tracking loss. Game tests drive
-the real scoring engine with synthetic poses through both turns, results, and
-replays; audio tests verify scheduling and cleanup with a mocked AudioContext.
-Local-history tests cover named and guest games, optional setup, storage errors,
-record validation, and persistence across visits.
-To check actual pose accuracy and sound, run `npm run dev`, select **Start Turn**,
-allow webcam access, and move with your whole body in view.

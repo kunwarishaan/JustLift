@@ -3,6 +3,7 @@ import React, { StrictMode, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GameScreen from './GameScreen.jsx'
+import { pose, rep } from './test-utils/poseFixtures.js'
 
 const mocks = vi.hoisted(() => ({
   poseCallbacks: [],
@@ -36,27 +37,6 @@ vi.mock('./repAudio.js', () => ({
   }),
 }))
 
-// Actual 3D geometry drives the real scoring engine; no scoring mocks.
-function pose(elbowDegrees, deviation = 0) {
-  const radians = (degrees) => degrees * Math.PI / 180
-  const elbow = radians(elbowDegrees)
-  const back = radians(180 - deviation)
-  const landmarks = Array.from({ length: 33 }, () => ({ x: 0, y: 0, z: 0, visibility: 0 }))
-  landmarks[11] = { x: 0.1, y: 0.1, z: 0, visibility: 1 }
-  landmarks[13] = { x: 0.25, y: 0.1, z: 0, visibility: 1 }
-  landmarks[15] = { x: 0.25 - 0.15 * Math.cos(elbow), y: 0.1 + 0.15 * Math.sin(elbow), z: 0, visibility: 1 }
-  landmarks[23] = { x: 0.1, y: 0.4, z: 0, visibility: 1 }
-  landmarks[25] = { x: 0.1 + 0.15 * Math.sin(back), y: 0.4 - 0.15 * Math.cos(back), z: 0, visibility: 1 }
-  return landmarks
-}
-
-function rep(tier = 'Perfect') {
-  if (tier === 'X') return [pose(90, 60), pose(160, 60)]
-  const deviation = { Okay: 45, Good: 18, Super: 9, Perfect: 0 }[tier]
-  // A fresh good top sample replaces the previous rep's top/alignment stats.
-  return [pose(180), pose(70), pose(100, deviation), pose(180)]
-}
-
 describe('GameScreen integration', () => {
   let container
   let root
@@ -81,9 +61,9 @@ describe('GameScreen integration', () => {
   const pulse = () => container.querySelector('.rep-feedback--pulse')
   const finalScore = (player) => playerRow(player).querySelectorAll('td')[1]
 
-  async function render({ strict = false } = {}) {
+  async function render({ strict = false, goals = [1, 1] } = {}) {
     await act(async () => {
-      root.render(strict ? <StrictMode><GameScreen /></StrictMode> : <GameScreen />)
+      root.render(strict ? <StrictMode><GameScreen playerGoals={goals} /></StrictMode> : <GameScreen playerGoals={goals} />)
     })
   }
 
@@ -147,15 +127,15 @@ describe('GameScreen integration', () => {
     await click(/start turn/i)
     const playerOne = currentCallback()
     await emit(playerOne, [...rep('X'), ...rep('Perfect'), ...rep('Good')])
-    expect(reps().textContent).toMatch(/\b3\b/)
+    expect(reps().textContent).toMatch(/\b2\b/)
     expect(score().textContent).toMatch(/\b6\b/)
-    expect(beepCount()).toBe(3)
+    expect(beepCount()).toBe(2)
     await click(/end turn/i)
 
     await click(/start turn/i)
     expect(reps().textContent).toMatch(/\b0\b/)
     expect(score().textContent).toMatch(/\b0\b/)
-    await emit(currentCallback(), [...rep('Perfect'), ...rep('Okay')])
+    await emit(currentCallback(), [...rep('Perfect', 'octavio'), ...rep('Okay', 'octavio')])
     expect(reps().textContent).toMatch(/\b2\b/)
     expect(score().textContent).toMatch(/\b5\b/)
     await click(/end turn/i)
@@ -166,11 +146,11 @@ describe('GameScreen integration', () => {
     expect(playerRow(1).querySelectorAll('td')[2].textContent).toBe('Locked')
     expect(playerRow(2).querySelectorAll('td')[2].textContent).toBe('Locked')
     expect(container.textContent).toMatch(/player 1 (wins|won)/i)
-    expect(beepCount()).toBe(5)
+    expect(beepCount()).toBe(4)
     button(/play again/i)
   })
 
-  it('reports a tie for two zero-rep turns and resets on Play Again', async () => {
+  it('reports no winner when both goals are missed and resets on Play Again', async () => {
     await render()
     await click(/start turn/i)
     await click(/end turn/i)
@@ -179,7 +159,7 @@ describe('GameScreen integration', () => {
 
     expect(finalScore(1).textContent).toMatch(/\b0\b/)
     expect(finalScore(2).textContent).toMatch(/\b0\b/)
-    expect(container.textContent).toMatch(/tie|draw/i)
+    expect(container.textContent).toMatch(/no winner this round/i)
     expect(beepCount()).toBe(0)
 
     await click(/play again/i)
@@ -191,6 +171,23 @@ describe('GameScreen integration', () => {
     expect(pulse()).toBeNull()
   })
 
+  it('fills goals with Okay reps and gives a completed goal priority over more points', async () => {
+    await render({ goals: [2, 2] })
+    await click(/start turn/i)
+    await emit(currentCallback(), [...rep('Okay'), ...rep('Okay')])
+    expect(playerRow(1).querySelector('progress').value).toBe(2)
+    expect(playerRow(1).querySelector('progress').max).toBe(2)
+    expect(score().textContent).toBe('2')
+    await click(/end turn/i)
+    await click(/start turn/i)
+    await emit(currentCallback(), rep('Perfect'))
+    expect(playerRow(2).querySelector('progress').value).toBe(1)
+    expect(score().textContent).toBe('4')
+    await click(/end turn/i)
+    expect(container.querySelector('.game-screen__result').textContent).toBe('Player 1 wins!')
+    expect(container.querySelector('.result-banner').textContent).toContain('Completing your bar comes first')
+  })
+
   it('discards an unfinished first turn and can award the win to Player 2', async () => {
     await render()
     await click(/start turn/i)
@@ -200,36 +197,36 @@ describe('GameScreen integration', () => {
     await emit(currentCallback(), [pose(180)])
     expect(reps().textContent).toBe('0')
     expect(beepCount()).toBe(0)
-    await emit(currentCallback(), rep())
+    await emit(currentCallback(), rep('Perfect'))
     await click(/end turn/i)
     expect(finalScore(1).textContent).toBe('0')
     expect(finalScore(2).textContent).toBe('4')
     expect(container.querySelector('[role="status"]').textContent).toMatch(/Player 2 wins/)
   })
 
-  it('beeps for X reps, but never for intermediate or repeated completion frames', async () => {
+  it('shows X feedback without a counted rep or beep and ignores repeated completion frames', async () => {
     await render()
     await click(/start turn/i)
     const callback = currentCallback()
-    await emit(callback, [pose(90, 60), pose(120, 60)])
+    await emit(callback, rep('X').slice(0, 25))
     expect(beepCount()).toBe(0)
     expect(reps().textContent).toMatch(/\b0\b/)
 
-    await emit(callback, [pose(160, 60)])
-    expect(beepCount()).toBe(1)
-    expect(reps().textContent).toMatch(/\b1\b/)
+    await emit(callback, rep('X').slice(25))
+    expect(beepCount()).toBe(0)
+    expect(reps().textContent).toMatch(/\b0\b/)
     expect(score().textContent).toMatch(/\b0\b/)
     expect(pulse().textContent).toMatch(/\bX\b/)
 
     await emit(callback, [pose(160, 60), pose(160, 60), pose(180)])
-    expect(beepCount()).toBe(1)
-    expect(reps().textContent).toMatch(/\b1\b/)
+    expect(beepCount()).toBe(0)
+    expect(reps().textContent).toMatch(/\b0\b/)
   })
 
   it('keeps every completion when multiple full reps arrive in one React batch', async () => {
     await render()
     await click(/start turn/i)
-    await emit(currentCallback(), [...rep(), ...rep(), ...rep()])
+    await emit(currentCallback(), [...rep('Perfect'), ...rep('Perfect'), ...rep('Perfect')])
     expect(reps().textContent).toMatch(/\b3\b/)
     expect(score().textContent).toMatch(/\b12\b/)
     expect(beepCount()).toBe(3)
@@ -240,20 +237,20 @@ describe('GameScreen integration', () => {
     await render()
     await click(/start turn/i)
     const callback = currentCallback()
-    await emit(callback, rep())
+    await emit(callback, rep('Perfect'))
     const firstPulse = pulse()
     expect(firstPulse).not.toBeNull()
     expect(firstPulse.textContent).toMatch(/perfect/i)
     await emit(callback, [pose(180), pose(180)])
     expect(pulse()).toBe(firstPulse)
 
-    await emit(callback, rep())
+    await emit(callback, rep('Perfect'))
     const secondPulse = pulse()
     expect(secondPulse).not.toBe(firstPulse)
     expect(secondPulse.textContent).toMatch(/perfect/i)
     await click(/end turn/i)
     await click(/start turn/i)
-    await emit(currentCallback(), rep())
+    await emit(currentCallback(), rep('Perfect'))
     expect(pulse()).not.toBe(secondPulse)
     expect(pulse().textContent).toMatch(/perfect/i)
     expect(beepCount()).toBe(3)
@@ -263,24 +260,24 @@ describe('GameScreen integration', () => {
     await render()
     await click(/start turn/i)
     const firstSession = currentCallback()
-    await emit(firstSession, rep())
+    await emit(firstSession, rep('Perfect'))
     // Frames delivered in the same batch as End Turn must already be ignored.
     await act(async () => {
       button(/end turn/i).click()
-      for (const landmarks of rep()) firstSession(landmarks)
+      for (const landmarks of rep('Perfect')) firstSession(landmarks)
     })
-    await emit(firstSession, rep())
+    await emit(firstSession, rep('Perfect'))
     expect(camera()).toBeNull()
     expect(finalScore(1).textContent).toMatch(/\b4\b/)
     expect(beepCount()).toBe(1)
 
     await click(/start turn/i)
     const secondSession = currentCallback()
-    await emit(firstSession, rep())
+    await emit(firstSession, rep('Perfect'))
     expect(reps().textContent).toMatch(/\b0\b/)
     expect(score().textContent).toMatch(/\b0\b/)
     expect(beepCount()).toBe(1)
-    await emit(secondSession, rep())
+    await emit(secondSession, rep('Perfect'))
     await click(/end turn/i)
     expect(finalScore(1).textContent).toMatch(/\b4\b/)
     expect(finalScore(2).textContent).toMatch(/\b4\b/)
@@ -289,15 +286,15 @@ describe('GameScreen integration', () => {
     await click(/play again/i)
     await click(/start turn/i)
     const thirdSession = currentCallback()
-    await emit(firstSession, rep())
-    await emit(secondSession, rep())
+    await emit(firstSession, rep('Perfect'))
+    await emit(secondSession, rep('Perfect'))
     expect(reps().textContent).toMatch(/\b0\b/)
     expect(score().textContent).toMatch(/\b0\b/)
     expect(beepCount()).toBe(2)
     await emit(thirdSession, rep('X'))
-    expect(reps().textContent).toMatch(/\b1\b/)
+    expect(reps().textContent).toMatch(/\b0\b/)
     expect(score().textContent).toMatch(/\b0\b/)
-    expect(beepCount()).toBe(3)
+    expect(beepCount()).toBe(2)
   })
 
   it('scores and beeps once in StrictMode, then cleans up camera/audio on unmount', async () => {
@@ -305,7 +302,7 @@ describe('GameScreen integration', () => {
     expect(mocks.poseMount).not.toHaveBeenCalled()
     await click(/start turn/i)
     const callback = currentCallback()
-    await emit(callback, rep())
+    await emit(callback, rep('Perfect'))
     expect(reps().textContent).toMatch(/\b1\b/)
     expect(score().textContent).toMatch(/\b4\b/)
     expect(beepCount()).toBe(1)
@@ -314,7 +311,7 @@ describe('GameScreen integration', () => {
     expect(mocks.poseUnmount.mock.calls.length).toBe(mocks.poseMount.mock.calls.length)
     expect(mocks.audioInstances.length).toBeGreaterThan(0)
     for (const audio of mocks.audioInstances) expect(audio.close).toHaveBeenCalled()
-    await emit(callback, rep())
+    await emit(callback, rep('Perfect'))
     expect(beepCount()).toBe(1)
   })
 })
