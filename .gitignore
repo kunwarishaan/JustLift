@@ -1,6 +1,7 @@
 # Dependencies and production output
 node_modules/
 dist/
+public/mediapipe/wasm/
 
 # Local environment files
 .env

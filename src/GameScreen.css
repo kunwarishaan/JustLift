@@ -1,0 +1,110 @@
+.game-screen {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 0.5rem;
+  color: #17202b;
+  font: 1rem / 1.5 system-ui, sans-serif;
+}
+
+.game-screen__scores {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.game-screen__scores caption {
+  text-align: left;
+  font-weight: 600;
+}
+
+.game-screen__scores th,
+.game-screen__scores td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #cdd3da;
+}
+
+.game-screen button {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #17202b;
+  border-radius: 0.25rem;
+  background: #17202b;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.game-screen button:focus-visible {
+  outline: 3px solid #007eae;
+  outline-offset: 3px;
+}
+
+.game-screen__feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.rep-feedback {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background: #eef1f5;
+}
+
+.rep-feedback--pulse {
+  animation: rep-pulse 350ms ease-out;
+}
+
+.game-screen__result {
+  padding: 1rem;
+  border: 2px solid currentColor;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.game-screen__legend {
+  color: #45515f;
+}
+
+.game-screen__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.75rem;
+}
+
+.game-screen__name-field {
+  display: grid;
+  gap: 0.25rem;
+  margin: 1rem 0;
+  max-width: 24rem;
+}
+
+.game-screen__name-field input {
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid #657080;
+  border-radius: 0.25rem;
+  font: inherit;
+}
+
+.game-screen__table-scroll {
+  overflow-x: auto;
+}
+
+.game-screen__scores th,
+.game-screen__scores td {
+  overflow-wrap: anywhere;
+}
+
+@keyframes rep-pulse {
+  0% { transform: scale(1.2); background: #ffdc61; }
+  100% { transform: scale(1); background: #eef1f5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rep-feedback--pulse { animation: none; }
+}

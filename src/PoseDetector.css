@@ -1,0 +1,36 @@
+.pose-detector {
+  width: 100%;
+  max-width: 48rem;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+.pose-detector__viewport {
+  position: relative;
+  overflow: hidden;
+  background: #17202b;
+  border-radius: 0.5rem;
+}
+
+.pose-detector__viewport video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: auto 4 / 3;
+}
+
+.pose-detector__viewport canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pose-detector__error {
+  color: #a11224;
+}
+
+.pose-detector__hint {
+  color: #45515f;
+}
