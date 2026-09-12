@@ -1,10 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PoseDetector from './PoseDetector.jsx'
 import useGame from './useGame.js'
 import useTurnPresentation from './useTurnPresentation.js'
 import { TIER_POINTS } from './gameState.js'
 import ExerciseCatalogue from './ExerciseCatalogue.jsx'
-import ExerciseDiagram from './ExerciseDiagram.jsx'
+import ExercisePreview from './ExercisePreview.jsx'
 import { DEFAULT_EXERCISE_ID, getExercise } from './exerciseCatalogue.js'
 import { formatPlayerLoad, normalizePlayerLoads } from './workoutSettings.js'
 import './GameScreen.css'
@@ -63,24 +63,13 @@ function TierLegend() {
   )
 }
 
-function ExerciseMode({ exercise, onOpenCatalogue }) {
-  const backgroundFilterId = useId()
+export function ExerciseMode({ exercise, onOpenCatalogue }) {
   return (
-    <section className="exercise-mode" aria-label="Selected exercise" style={{ '--exercise-preview-filter': `url(#${backgroundFilterId})` }}>
-      <svg className="exercise-mode__filter" width="0" height="0" aria-hidden="true" focusable="false">
-        <defs>
-          <filter id={backgroundFilterId} colorInterpolationFilters="sRGB" x="0" y="0" width="100%" height="100%">
-            {/* Fade near-white pixels to transparency without changing the figure's RGB colors. */}
-            <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  -10 -10 -10 0 29.7" />
-            {/* Preserve transparency around the contained image as well. */}
-            <feComposite operator="in" in2="SourceGraphic" />
-          </filter>
-        </defs>
-      </svg>
+    <section className="exercise-mode" aria-label="Selected exercise">
       <div className="exercise-mode__top"><span className="eyebrow">Exercise / {exercise.groupName}</span><span className="exercise-mode__index">01 SET</span></div>
       <div className="exercise-mode__preview">
         <div><h4 className="wide-type">{exercise.name}</h4><p>One movement.<br />Two players. Your pace.</p></div>
-        <ExerciseDiagram exerciseId={exercise.id} />
+        <ExercisePreview exerciseId={exercise.id} />
       </div>
       <div className="exercise-mode__bottom">
         {onOpenCatalogue ? <button type="button" className="button exercise-mode__choose" onClick={onOpenCatalogue} aria-haspopup="dialog">Change exercise <span aria-hidden="true">↗</span></button> : <span className="eyebrow">Same exercise. Your turn.</span>}
@@ -197,10 +186,10 @@ function RepBreakdown({ player, index, history }) {
   )
 }
 
-export default function GameScreen({ playerNames, playerGoals, playerLoads, exerciseId, onExerciseChange, onGameComplete, onShowStats, onEditPlayers, historyMessage }) {
+export default function GameScreen({ playerNames, playerGoals, playerLoads, exerciseId, onExerciseChange, onGameComplete, onTurnComplete, onStatusChange, onReplay, onShowStats, onEditPlayers, historyMessage }) {
   const [localExerciseId, setLocalExerciseId] = useState(DEFAULT_EXERCISE_ID)
   const [catalogueOpen, setCatalogueOpen] = useState(false)
-  const game = useGame({ playerNames, playerGoals, onGameComplete })
+  const game = useGame({ playerNames, playerGoals, onGameComplete, onTurnComplete })
   const display = useTurnPresentation(game)
   const player = game.players[game.currentPlayer]
   const isActive = game.phase === 'active'
@@ -213,6 +202,10 @@ export default function GameScreen({ playerNames, playerGoals, playerLoads, exer
   const exercise = getExercise(exerciseId ?? localExerciseId)
   const loads = normalizePlayerLoads(playerLoads)
   const canChangeExercise = game.phase === 'ready' && game.currentPlayer === 0
+
+  useEffect(() => {
+    onStatusChange?.({ phase: game.phase, currentPlayer: game.currentPlayer })
+  }, [game.phase, game.currentPlayer, onStatusChange])
 
   function selectExercise(nextId) {
     if (!canChangeExercise) return
@@ -267,7 +260,7 @@ export default function GameScreen({ playerNames, playerGoals, playerLoads, exer
         <Scoreboard game={game} loads={loads} />
         {isActive && <div className="turn-controls"><span className="eyebrow">Finished your set?</span><button type="button" className="button end-turn" onClick={display.endTurn}>End Turn</button></div>}
         {game.phase === 'ready' && <p className="score-note">Reach your goal to qualify.<br />If both qualify, highest points wins.</p>}
-        {isResults && <div className="game-screen__actions"><button type="button" className="button button--primary" onClick={display.playAgain}>Play Again</button>{onEditPlayers && <button type="button" className="button button--quiet" onClick={onEditPlayers}>Change goals</button>}{onShowStats && <button type="button" className="button" onClick={onShowStats}>Stats</button>}</div>}
+        {isResults && <div className="game-screen__actions"><button type="button" className="button button--primary" onClick={onReplay ?? display.playAgain}>Play Again</button>{onEditPlayers && <button type="button" className="button button--quiet" onClick={onEditPlayers}>Change goals</button>}{onShowStats && <button type="button" className="button" onClick={onShowStats}>Stats</button>}</div>}
       </div>
 
       {isResults && <>

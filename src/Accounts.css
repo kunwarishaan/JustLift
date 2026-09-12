@@ -1,0 +1,60 @@
+.account-auth { max-width: 1440px; min-height: calc(100svh - 68px); margin: auto; padding: 48px clamp(28px, 5vw, 80px); display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: clamp(40px, 7vw, 110px); }
+.account-auth__intro h2 { font-size: clamp(60px, 7vw, 106px); margin: 24px 0 30px; text-transform: uppercase; }
+.account-auth__intro h2 span { color: var(--accent); }
+.account-auth__intro > p:not(.eyebrow) { max-width: 470px; font-size: 18px; color: var(--dim); }
+.account-auth__steps { display: flex; flex-wrap: wrap; gap: 12px 24px; border-top: 1px solid var(--edge); margin-top: 36px; padding-top: 22px; font: 400 12px 'IBM Plex Mono', monospace; color: var(--dim); }
+.account-auth__signed-in { margin-top: 24px; }
+.account-auth__signed-in button { display: block; margin-top: 10px; padding-left: 0; }
+.account-auth__form { border-top: 2px solid var(--edge-2); padding: 26px 0; min-width: 0; }
+.account-auth__form h3 { font-size: clamp(32px, 3.8vw, 48px); margin: 14px 0; }
+.account-auth__form > p:not(.eyebrow) { color: var(--dim); }
+.account-auth__form fieldset { border: 0; padding: 0; margin: 24px 0 0; display: grid; gap: 18px; min-width: 0; }
+.account-auth label, .account-setup__targets label { display: grid; gap: 7px; min-width: 0; font: 400 13px 'IBM Plex Mono', monospace; color: var(--dim); }
+.account-auth input, .account-setup input, .account-setup select { width: 100%; min-width: 0; height: 48px; border: 1px solid var(--edge-2); background: var(--bg-2); color: var(--txt); border-radius: 0; padding: 10px 12px; font: 500 18px 'Archivo', sans-serif; }
+.account-auth input:focus-visible, .account-setup input:focus-visible, .account-setup select:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.account-auth input:disabled { opacity: .5; }
+.account-auth small { color: var(--dim); }
+.account-auth__form button:disabled { opacity: .45; }
+.account-auth__switch { display: flex; width: 100%; margin-top: 12px; font-size: 12px; }
+.account-notice { margin: 14px 0; padding: 12px 16px; background: var(--bg-2); border-left: 3px solid var(--edge-2); color: var(--txt); font-size: 14px; }
+.account-bar { padding: 10px 36px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--edge); }
+.account-bar__tabs, .account-bar__players { display: flex; align-items: center; gap: 6px; }
+.account-bar__tabs .button { min-height: 38px; padding: 8px 14px; font-size: 12px; }
+.account-bar__tabs [aria-current='page'] { color: var(--accent); border-color: var(--accent); }
+.account-bar__player { display: flex; align-items: center; gap: 8px; padding-left: 16px; border-left: 1px solid var(--edge); min-width: 0; }
+.account-bar__player span { color: var(--dim); font-size: 12px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-bar__player button { padding: 6px; border: 0; color: var(--dim); background: transparent; font-size: 12px; text-decoration: underline; }
+.account-bar button:disabled { opacity: .4; }
+.account-setup { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: start; gap: clamp(32px, 5vw, 80px); padding-top: 36px; }
+.account-setup__intro > h2 { margin: 18px 0 20px; font-size: clamp(46px, 5.5vw, 82px); text-transform: uppercase; }
+.account-setup__intro > p:not(.eyebrow) { color: var(--dim); font-size: 17px; }
+.account-setup .exercise-mode { margin-top: 28px; }
+.account-setup__form { padding-top: 16px; border-top: 2px solid var(--edge-2); }
+.account-setup__player { margin: 16px 0 0; padding: 0 0 14px; border: 0; border-bottom: 1px solid var(--edge); min-width: 0; }
+.account-setup__player legend { display: flex; gap: 16px; align-items: center; margin: 0 0 16px; font-weight: 700; font-size: 23px; overflow-wrap: anywhere; max-width: 100%; }
+.account-setup__player legend small { display: block; color: var(--dim); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; }
+.account-setup__number { color: var(--dim); font: 500 32px 'IBM Plex Mono', monospace; }
+.account-setup__player:first-of-type .account-setup__number { color: var(--accent); }
+.account-setup__targets { display: grid; grid-template-columns: 1fr 1.25fr .7fr; gap: 12px; }
+.account-setup input::placeholder { color: var(--dim); font-size: 14px; }
+.account-setup .account-setup__previous { margin-top: 12px; color: var(--dim); font-size: 13px; }
+.account-setup .account-setup__hint { margin: 18px 0; color: var(--dim); font-size: 13px; }
+.account-setup__form > .button { width: 100%; }
+.account-progress-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; padding: 22px 36px 0; }
+.account-progress-controls label { display: flex; align-items: center; gap: 12px; color: var(--dim); font-size: 14px; }
+.account-progress-controls select { max-width: 280px; padding: 8px 12px; background: var(--bg-2); color: var(--txt); border: 1px solid var(--edge-2); font: inherit; }
+.account-sync { margin: 16px 36px; }
+.account-sync .button { min-height: 34px; padding: 6px 12px; margin-left: 8px; font-size: 11px; }
+.account-loading { padding: 60px 36px; color: var(--dim); }
+@media (max-width: 800px) {
+  .account-auth, .account-setup { grid-template-columns: minmax(0, 1fr); gap: 30px; padding: 30px 22px; }
+  .account-auth__intro h2 { font-size: 64px; }
+  .account-auth__steps { display: none; }
+  .account-bar { padding: 10px 20px; align-items: start; flex-direction: column; }
+  .account-bar__players { width: 100%; justify-content: space-between; }
+  .account-bar__player { padding-left: 0; border-left: 0; }
+  .account-bar__player span { max-width: 110px; }
+  .account-progress-controls { padding-inline: 22px; }
+  .account-setup__targets { grid-template-columns: 1fr 1.2fr .65fr; gap: 8px; }
+  .account-sync { margin-inline: 22px; }
+}

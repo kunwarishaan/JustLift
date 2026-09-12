@@ -2,9 +2,10 @@
 
 A local, sequential two-player exercise game built with Vite and React in plain
 JavaScript. The Tempo interface shows a live camera, rep history, form readouts,
-personal goal bars, an illustrated exercise catalogue, and final results. Names,
-goals, optional weights, and game history stay in
-this browser's localStorage; no account service or backend is required.
+personal goal bars, an illustrated exercise catalogue, and final results.
+Each player signs in with their own email/password account. Supabase Auth stores
+account credentials and display names; its database stores each account's
+completed workouts across devices. Camera footage remains on the device.
 
 ## Run it
 
@@ -15,7 +16,15 @@ npm install
 npm run dev
 ```
 
+Before signing in, create a Supabase project, run `supabase/schema.sql` in its
+SQL Editor, and copy `.env.example` to `.env` with the project URL and public
+publishable key. Restart Vite after changing these values. Follow the
+[account setup guide](docs/accounts-setup.md), including email delivery settings.
+Without a configured project, the sign-in screen displays a connection notice;
+it does not create pretend local accounts.
+
 Open the local URL printed by Vite. Camera access requires localhost or HTTPS.
+Use the same Supabase project in every deployed copy to share account history.
 
 ```sh
 npm test
@@ -29,7 +38,7 @@ and recorded test fixtures are not included in the production bundle.
 ## Demo setup and rules
 
 Choose from 24 exercises organized by Chest, Back, Biceps, Triceps, Shoulders,
-and Legs using **Change exercise** on the "Make every rep count" screen. The
+and Legs using **Change exercise** before setting goals or on the ready screen. The
 selected mode applies to both players and is locked once the first turn starts.
 Each exercise has a gray/red anatomical illustration showing the person and
 equipment. Illustrations are served by [ExerciseDB's public image service](https://oss.exercisedb.dev/)
@@ -44,9 +53,12 @@ and saved workout metadata; they do not select another detector or affect rep
 counts, form grades, goal credit, or winner calculation. The current calibrated
 tracking implementation remains for push-ups. Use Push-ups for the live demo.
 
-1. **Player 1 uses Justin's calibration; Player 2 uses Octavio's.** Display
-   names are optional and do not change which calibration is used. Set each
-   player's goal between 1 and 999 reps. Skipping names preserves the goals.
+1. Sign in separately as each player. **Player 1 uses Justin's calibration;
+   Player 2 uses Octavio's.** Account identity does not change that calibration.
+   Each player's goal must be between 1 and 999 reps. The most recent completed
+   reps and weight for that account/exercise prefill the fields; no history
+   means blank fields. A previous zero-rep result stays zero until the player
+   chooses a valid positive goal, rather than silently becoming a default.
 2. Use the same camera position, side-on orientation, and framing as the demo
    recordings. Keep shoulders, elbows, wrists, hips, and knees visible. Select
    **Start Turn**, allow the camera, and hold a straight-arm top briefly before
@@ -60,9 +72,10 @@ tracking implementation remains for push-ups. Use Push-ups for the live demo.
 5. If only one player reaches their goal, that player wins regardless of points.
    If both reach their goals, higher points wins, with equal points a tie.
    If neither reaches their goal, there is no winner.
-6. **Play Again** keeps the names, goals, weights, and exercise. **Change goals**, available before
-   the first turn and after results, returns to setup without reloading. Goals
-   are locked between the two players' turns.
+6. **Play Again** returns to setup with the last completed workout's reps/weight.
+   **Change goals**, available before the first turn and after results, returns
+   to setup without reloading. Goals and account identities are locked between
+   the two players' turns. Pending saves finish before the next setup opens.
 
 These are personalized demo profiles, not a universal form classifier. The
 [calibration report](docs/demo-calibration.md) explains the measured thresholds,
@@ -140,7 +153,40 @@ ignored immediately after End Turn, including during batched React updates.
 Reduced motion disables the slab and frame-edge animation while keeping tier
 feedback visible.
 
-## Local profiles and history
+## Accounts and progress
+
+The site opens at sign-in. **Create account** collects a name, email and password.
+Names are trimmed and limited to 40 characters. With email confirmation enabled,
+confirm the email before signing in. Two independent in-memory sessions keep
+Player 1 and Player 2 separate; one account cannot occupy both slots. Reloading
+the page requires signing in again. Passwords, sessions and account workout
+history are never written to localStorage by this app.
+
+Every **End Turn** saves one immutable workout containing exercise, actual reps,
+rep goal, weight/unit, points and completion date. Player 1's workout saves even
+if Player 2 never finishes. Empty or zero weight is presented as **Bodyweight**.
+Save failures stay visible with an idempotent retry using the original workout
+ID, owner and values. Keep the page open until saving succeeds; failed saves are
+not an offline queue and do not survive closing the page.
+
+The **Progress** tab selects a signed-in account and an exercise. Beneath the
+exercise image, separate graphs show date versus completed reps and date versus
+weight. Green/check markers mean the rep goal was met; red/cross markers mean
+it was missed. Hover, focus or tap a marker for the actual/target rep result.
+Weights can be displayed in kg or lb; bodyweight is plotted at zero and labelled
+explicitly. The data table exposes all workout dates and results.
+
+Supabase row-level security restricts records to their authenticated owner.
+Names and hardcoded calibration IDs never determine database ownership. Legacy
+local games are not imported into accounts because names do not prove ownership.
+See [schema.sql](supabase/schema.sql) and the
+[live verification steps](docs/accounts-setup.md) before using a deployed project.
+
+## Legacy local history
+
+The earlier `LocalGame` component remains available in source and regression
+tests, but the main app now opens `AccountGame`. Its original local data is left
+untouched. The following keys apply only to that legacy component.
 
 Names are trimmed and limited to 40 characters. Duplicate names are allowed;
 player slots and calibration IDs remain distinct. These are local preferences,
@@ -171,6 +217,12 @@ tracking recovery, goal outcomes, camera/audio cleanup, and storage versions.
 Integration tests exercise the real game hook and scoring engine with timed
 joint geometry through both turns, results, edits, and replay. Camera/audio IO
 is mocked in those tests.
+
+Account tests cover independent sessions, owner-scoped history, confirmation,
+blank/autofilled goals, per-turn saves, retries, and replay while a save is still
+pending. Progress tests cover real date spacing, success/failure details,
+duplicate timestamps, mixed units and bodyweight. Supabase is mocked in these
+tests; live Auth and database policy checks require the configured project.
 
 Catalogue tests cover all groups, search, selection, keyboard focus, dismissal,
 and cleanup. Workout tests cover optional/invalid weights, kg/lb persistence,

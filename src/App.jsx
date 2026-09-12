@@ -1,4 +1,4 @@
-import LocalGame from './LocalGame.jsx'
+import AccountGame from './AccountGame.jsx'
 import './Tempo.css'
 
 export default function App() {
@@ -11,7 +11,7 @@ export default function App() {
         </h1>
         <p className="eyebrow app-header__note">One camera. Your pace.</p>
       </header>
-      <LocalGame />
+      <AccountGame />
     </main>
   )
 }

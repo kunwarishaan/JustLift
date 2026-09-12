@@ -5,7 +5,7 @@ import { getCalibrationProfile } from './calibrationProfiles.js'
 import { createRepAudio } from './repAudio.js'
 
 /** Reusable turn controller. GameScreen only renders this hook's state/actions. */
-export default function useGame({ playerNames, playerGoals, onGameComplete } = {}) {
+export default function useGame({ playerNames, playerGoals, onGameComplete, onTurnComplete } = {}) {
   const [game, setGame] = useState(() => createInitialGameState(playerNames, playerGoals))
   const [live, setLive] = useState(null)
   const [histories, setHistories] = useState([[], []])
@@ -16,10 +16,15 @@ export default function useGame({ playerNames, playerGoals, onGameComplete } = {
   const nextSessionId = useRef(0)
   const audioRef = useRef(null)
   const onGameCompleteRef = useRef(onGameComplete)
+  const onTurnCompleteRef = useRef(onTurnComplete)
 
   useEffect(() => {
     onGameCompleteRef.current = onGameComplete
   }, [onGameComplete])
+
+  useEffect(() => {
+    onTurnCompleteRef.current = onTurnComplete
+  }, [onTurnComplete])
 
   const apply = useCallback((action) => {
     const previous = gameRef.current
@@ -70,12 +75,15 @@ export default function useGame({ playerNames, playerGoals, onGameComplete } = {
 
   const endTurn = useCallback(() => {
     if (gameRef.current.phase !== 'active') return
+    const finishedPlayer = gameRef.current.currentPlayer
     sessionRef.current = null // Stop accepting frames before React unmounts the camera.
     audioRef.current?.close()
-    if (apply({ type: 'END_TURN' }) && gameRef.current.phase === 'results') {
+    if (apply({ type: 'END_TURN' })) {
+      // A finished workout belongs to this player even if the other never plays.
+      onTurnCompleteRef.current?.({ ...gameRef.current.players[finishedPlayer] }, finishedPlayer)
       // Emit once on the accepted transition, never from render or an effect.
       // Keeping persistence outside this hook leaves guest play independent.
-      onGameCompleteRef.current?.(gameRef.current.players)
+      if (gameRef.current.phase === 'results') onGameCompleteRef.current?.(gameRef.current.players)
     }
   }, [apply])
 

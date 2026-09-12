@@ -39,9 +39,7 @@
 .exercise-illustration__canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
 .exercise-illustration__canvas[hidden] { display: none; }
 .exercise-illustration__message { padding: 16px; text-align: center; font: 400 13px / 1.5 'Archivo', Arial, sans-serif; }
-.exercise-mode__filter { position: absolute; pointer-events: none; }
-.exercise-mode__preview .exercise-illustration { height: 148px; margin-block: 4px; background: transparent; color: var(--dim); }
-.exercise-mode__preview .exercise-illustration__canvas { filter: var(--exercise-preview-filter); }
+.exercise-mode__preview > .exercise-preview { height: 148px; margin-block: 4px; }
 .exercise-mode__bottom { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--edge); padding-top: 14px; }
 .exercise-mode__choose { justify-content: space-between; min-height: 42px; padding: 10px 14px; font-size: 12px; gap: 20px; }
 .exercise-mode__choose span { font-size: 18px; color: var(--accent); line-height: 1; }
@@ -190,7 +188,7 @@
   .ready-layout { gap: 100px; margin-block: 45px; }
   .ready-title { font-size: 86px; }
   .exercise-mode__preview { min-height: 205px; }
-  .exercise-mode__preview .exercise-illustration { height: 205px; }
+  .exercise-mode__preview > .exercise-preview { height: 205px; }
   .arena-grid { grid-template-columns: 220px minmax(350px, 1fr) 320px; }
   .depth-arc__value { font-size: 54px; }
 }

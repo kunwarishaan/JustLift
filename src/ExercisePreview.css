@@ -1,0 +1,4 @@
+.exercise-preview { position: relative; min-width: 0; width: 100%; }
+.exercise-preview__filter { position: absolute; pointer-events: none; }
+.exercise-preview > .exercise-illustration { height: 100%; background: transparent; color: var(--dim); }
+.exercise-preview .exercise-illustration__canvas { filter: var(--exercise-preview-filter); }
