@@ -11,7 +11,7 @@ function drawPose(context, canvas, landmarks) {
   context.clearRect(0, 0, width, height)
   const visible = (point) => point && (point.visibility ?? 1) >= 0.5
 
-  context.strokeStyle = '#35e0cb'
+  context.strokeStyle = '#f1f3ed'
   context.lineWidth = Math.max(2, width / 320)
   for (const { start, end } of PoseLandmarker.POSE_CONNECTIONS) {
     const from = landmarks[start]
@@ -28,9 +28,9 @@ function drawPose(context, canvas, landmarks) {
     const keyJoint = KEY_JOINTS.has(index)
     context.beginPath()
     context.arc(point.x * width, point.y * height, keyJoint ? 6 : 3, 0, 2 * Math.PI)
-    context.fillStyle = keyJoint ? '#ffdc61' : '#ffffff'
+    context.fillStyle = keyJoint ? '#f5d000' : '#f1f3ed'
     context.fill()
-    context.strokeStyle = '#17202b'
+    context.strokeStyle = '#125a8a'
     context.lineWidth = 1.5
     context.stroke()
   })
@@ -63,6 +63,8 @@ export default function PoseDetector({ onPoseUpdate }) {
   const onPoseUpdateRef = useRef(onPoseUpdate)
   const [status, setStatus] = useState('Waiting for camera permission…')
   const [error, setError] = useState('')
+  const [cameraLive, setCameraLive] = useState(false)
+  const [trackingPerson, setTrackingPerson] = useState(false)
 
   // A changing parent callback must not reopen the webcam or reload the model.
   useEffect(() => {
@@ -80,6 +82,7 @@ export default function PoseDetector({ onPoseUpdate }) {
     let frameId = null
     let lastVideoTime = -1
     let landmarks = []
+    let wasTracking = false
 
     function releaseResources() {
       if (frameId !== null) cancelAnimationFrame(frameId)
@@ -109,11 +112,20 @@ export default function PoseDetector({ onPoseUpdate }) {
       releaseResources()
       setError(message)
       setStatus('')
+      setCameraLive(false)
+      setTrackingPerson(false)
       onPoseUpdateRef.current?.([])
     }
 
     function onCameraEnded() {
       fail('The camera disconnected or access was revoked. Check your camera and reload this page.')
+    }
+
+    function syncTracking(nextLandmarks) {
+      const nextTracking = nextLandmarks.length > 0
+      if (nextTracking === wasTracking) return
+      wasTracking = nextTracking
+      setTrackingPerson(nextTracking)
     }
 
     function renderFrame(timestamp) {
@@ -128,11 +140,13 @@ export default function PoseDetector({ onPoseUpdate }) {
             landmarks = detector.detectForVideo(video, timestamp).landmarks[0] ?? []
             lastVideoTime = video.currentTime
             drawPose(context, canvas, landmarks)
+            syncTracking(landmarks)
           }
         } else {
           landmarks = []
           lastVideoTime = -1
           context.clearRect(0, 0, canvas.width, canvas.height)
+          syncTracking(landmarks)
         }
       } catch {
         fail('Pose tracking stopped unexpectedly. Reload this page to restart the camera and detector.')
@@ -169,6 +183,7 @@ export default function PoseDetector({ onPoseUpdate }) {
         video.srcObject = stream
         await video.play()
         if (disposed || stopped) return
+        setCameraLive(true)
 
         stage = 'model'
         setStatus('Loading pose detector…')
@@ -204,11 +219,19 @@ export default function PoseDetector({ onPoseUpdate }) {
 
   return (
     <section className="pose-detector" aria-label="Live pose detection">
+      {!error && (
+        <div className="pose-detector__chrome" aria-live="polite">
+          {cameraLive && <p className="pose-detector__label">Live Camera</p>}
+          {trackingPerson && <p className="pose-detector__label pose-detector__label--active">Tracking Person</p>}
+        </div>
+      )}
       <div className="pose-detector__viewport">
         <video ref={videoRef} autoPlay muted playsInline aria-label="Live webcam feed" />
         <canvas ref={canvasRef} aria-hidden="true" />
       </div>
-      {error ? <p className="pose-detector__error" role="alert">{error}</p> : <p role="status">{status}</p>}
+      {error
+        ? <p className="pose-detector__error" role="alert">{error}</p>
+        : <p className="pose-detector__status" role="status">{status}</p>}
       <p className="pose-detector__hint">Yellow markers highlight shoulders, elbows, wrists, hips, and knees.</p>
     </section>
   )

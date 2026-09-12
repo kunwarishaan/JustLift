@@ -1,0 +1,73 @@
+:root {
+  --jl-bg: #1e86ca;
+  --jl-bg-deep: #1774b0;
+  --jl-surface: #1669a0;
+  --jl-surface-strong: #125a8a;
+  --jl-text: #f1f3ed;
+  --jl-text-muted: color-mix(in srgb, var(--jl-text) 78%, var(--jl-bg));
+  --jl-accent: #f5d000;
+  --jl-accent-ink: #1a2a18;
+  --jl-danger: #ffb4b4;
+  --jl-font-display: "Syne", "Avenir Next", "Segoe UI", sans-serif;
+  --jl-font-body: "Figtree", "Avenir Next", "Segoe UI", sans-serif;
+  --jl-radius: 0.35rem;
+  --jl-space: clamp(1rem, 2.5vw, 1.75rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: only light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(120% 80% at 12% -10%, color-mix(in srgb, var(--jl-accent) 22%, transparent), transparent 55%),
+    radial-gradient(90% 70% at 100% 0%, color-mix(in srgb, #ffffff 16%, transparent), transparent 50%),
+    linear-gradient(165deg, var(--jl-bg) 0%, var(--jl-bg-deep) 100%);
+  background-attachment: fixed;
+  color: var(--jl-text);
+  font: 1rem / 1.55 var(--jl-font-body);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+@keyframes jl-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes jl-bar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

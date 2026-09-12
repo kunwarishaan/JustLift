@@ -1,0 +1,49 @@
+.app-shell {
+  width: min(56rem, calc(100% - 2 * var(--jl-space)));
+  margin: 0 auto;
+  padding: calc(var(--jl-space) * 1.25) 0 calc(var(--jl-space) * 2);
+  animation: jl-rise 480ms ease-out both;
+}
+
+.app-brand {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: calc(var(--jl-space) * 1.1);
+}
+
+.app-brand__mark {
+  margin: 0;
+  color: var(--jl-text);
+  font-family: var(--jl-font-display);
+  font-size: clamp(2.4rem, 7vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+
+.app-brand__mark::after {
+  content: "";
+  display: block;
+  width: 3.5rem;
+  height: 0.28rem;
+  margin-top: 0.55rem;
+  background: var(--jl-accent);
+  transform-origin: left center;
+  animation: jl-bar 520ms 120ms ease-out both;
+}
+
+.app-brand__tagline {
+  margin: 0;
+  max-width: 28rem;
+  color: var(--jl-text-muted);
+  font-size: 1.05rem;
+}
+
+.app-notice {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--jl-text) 28%, transparent);
+  border-radius: var(--jl-radius);
+  background: var(--jl-surface-strong);
+  color: var(--jl-text);
+}

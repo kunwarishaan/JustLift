@@ -32,7 +32,7 @@ export default function LocalGame() {
   return (
     <>
       <div hidden={view === 'stats'}>
-        {storageNotice && <p className="game-screen" role="status">{storageNotice}</p>}
+        {storageNotice && <p className="app-notice" role="status">{storageNotice}</p>}
         {playerNames === null ? (
           <PlayerSetup
             initialNames={preferences.names}
