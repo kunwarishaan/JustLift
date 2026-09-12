@@ -1,0 +1,12 @@
+# Dependencies and production output
+node_modules/
+dist/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Logs and operating system files
+*.log
+.DS_Store
