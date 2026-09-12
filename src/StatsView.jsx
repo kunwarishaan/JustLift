@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { loadGames } from './gameStorage.js'
+import './GameScreen.css'
 
 export default function StatsView({ onBack }) {
   // Mount fresh on every visit so this view reads persisted data, not a cache
@@ -8,11 +9,13 @@ export default function StatsView({ onBack }) {
 
   return (
     <section className="game-screen" aria-label="Stats">
-      <h2>Stats</h2>
-      <p>Past games saved in this browser, newest first.</p>
+      <div className="game-screen__panel">
+        <h2>Stats</h2>
+        <p>Past games saved in this browser, newest first.</p>
+      </div>
       {error && <p role="status">{error}</p>}
       {games.length === 0 ? (!error && <p>No saved games yet.</p>) : (
-        <div className="game-screen__table-scroll">
+        <div className="game-screen__panel game-screen__panel--strong game-screen__table-scroll">
           <table className="game-screen__scores">
             <caption>Past games</caption>
             <thead><tr><th scope="col">Date</th><th scope="col">Player 1</th><th scope="col">Player 2</th><th scope="col">Winner</th></tr></thead>

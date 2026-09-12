@@ -1,15 +1,42 @@
 .pose-detector {
+  display: grid;
+  gap: 0.75rem;
   width: 100%;
-  max-width: 48rem;
-  font-family: system-ui, sans-serif;
+  font-family: var(--jl-font-body);
   line-height: 1.5;
+}
+
+.pose-detector__chrome {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1.1rem;
+  align-items: baseline;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #0a456c;
+  border-radius: var(--jl-radius);
+  background-color: var(--jl-surface-strong);
+  color: var(--jl-text);
+}
+
+.pose-detector__label {
+  margin: 0;
+  color: var(--jl-text);
+  font-family: var(--jl-font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pose-detector__label--active {
+  color: var(--jl-accent);
 }
 
 .pose-detector__viewport {
   position: relative;
   overflow: hidden;
-  background: #17202b;
-  border-radius: 0.5rem;
+  border: 1px solid #0a456c;
+  border-radius: var(--jl-radius);
+  background-color: var(--jl-surface-strong);
 }
 
 .pose-detector__viewport video {
@@ -28,9 +55,12 @@
 }
 
 .pose-detector__error {
-  color: #a11224;
+  margin: 0;
+  color: var(--jl-danger);
 }
 
+.pose-detector__status,
 .pose-detector__hint {
-  color: #45515f;
+  margin: 0;
+  color: var(--jl-text-muted);
 }

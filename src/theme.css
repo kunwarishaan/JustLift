@@ -1,0 +1,71 @@
+:root {
+  --jl-bg: #1e86ca;
+  --jl-surface: #0d5f96;
+  --jl-surface-strong: #0a4f7d;
+  --jl-text: #f1f3ed;
+  --jl-text-muted: #d7ddd4;
+  --jl-accent: #f5d000;
+  --jl-accent-ink: #1a2a18;
+  --jl-danger: #ffb4b4;
+  --jl-font-display: "Syne", "Avenir Next", "Segoe UI", sans-serif;
+  --jl-font-body: "Figtree", "Avenir Next", "Segoe UI", sans-serif;
+  --jl-radius: 0.2rem;
+  --jl-space: clamp(1rem, 2.5vw, 1.75rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: only light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--jl-bg);
+  background-image:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--jl-text) 10%, transparent) 1px, transparent 0);
+  background-size: 22px 22px;
+  color: var(--jl-text);
+  font: 1rem / 1.55 var(--jl-font-body);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+@keyframes jl-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes jl-bar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

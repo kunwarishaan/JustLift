@@ -14,36 +14,39 @@ export default function GameScreen({ playerNames, onGameComplete, onShowStats, h
 
   return (
     <section className="game-screen" aria-label="Two-player push-up game">
-      <h2>{isResults ? 'Results' : `${playerLabel(player, game.currentPlayer)}'s turn`}</h2>
+      <div className="game-screen__panel">
+        <h2>{isResults ? 'Results' : `${playerLabel(player, game.currentPlayer)}'s turn`}</h2>
+        {isResults ? (
+          <p className="game-screen__result" role="status">
+            {game.winner === null ? "It's a tie!" : `${playerLabel(game.players[game.winner], game.winner)} wins!`}
+          </p>
+        ) : (
+          <p>{isActive ? 'Do your push-ups, then end your turn.' : 'Get into position, then start your turn.'}</p>
+        )}
+      </div>
 
-      {isResults ? (
-        <p className="game-screen__result" role="status">
-          {game.winner === null ? "It's a tie!" : `${playerLabel(game.players[game.winner], game.winner)} wins!`}
-        </p>
-      ) : (
-        <p>{isActive ? 'Do your push-ups, then end your turn.' : 'Get into position, then start your turn.'}</p>
-      )}
-
-      <table className="game-screen__scores">
-        <caption>{isResults ? 'Final scores' : 'Scores'}</caption>
-        <thead><tr><th scope="col">Player</th><th scope="col">Reps</th><th scope="col">Points</th><th scope="col">Turn</th></tr></thead>
-        <tbody>
-          {game.players.map((entry, index) => (
-            <tr key={index}>
-              <th scope="row">{playerLabel(entry, index)}</th>
-              <td>{entry.repCount}</td>
-              <td>{entry.score}</td>
-              <td>{entry.finished ? 'Locked' : isActive && index === game.currentPlayer ? 'Playing' : 'Waiting'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="game-screen__panel game-screen__panel--strong">
+        <table className="game-screen__scores">
+          <caption>{isResults ? 'Final scores' : 'Scores'}</caption>
+          <thead><tr><th scope="col">Player</th><th scope="col">Reps</th><th scope="col">Points</th><th scope="col">Turn</th></tr></thead>
+          <tbody>
+            {game.players.map((entry, index) => (
+              <tr key={index}>
+                <th scope="row">{playerLabel(entry, index)}</th>
+                <td>{entry.repCount}</td>
+                <td>{entry.score}</td>
+                <td>{entry.finished ? 'Locked' : isActive && index === game.currentPlayer ? 'Playing' : 'Waiting'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {game.phase === 'ready' && <button type="button" onClick={game.startTurn}>Start Turn</button>}
 
       {isActive && (
         <>
-          <div className="game-screen__feedback" role="status" aria-live="polite" aria-atomic="true">
+          <div className="game-screen__panel game-screen__feedback" role="status" aria-live="polite" aria-atomic="true">
             <span>Reps: <strong>{player.repCount}</strong></span>
             <span>
               Latest rep:{' '}
@@ -65,7 +68,7 @@ export default function GameScreen({ playerNames, onGameComplete, onShowStats, h
           {historyMessage && <p role="status">{historyMessage}</p>}
           <div className="game-screen__actions">
             <button type="button" onClick={game.playAgain}>Play Again</button>
-            {onShowStats && <button type="button" onClick={onShowStats}>Stats</button>}
+            {onShowStats && <button type="button" className="game-screen__button--ghost" onClick={onShowStats}>Stats</button>}
           </div>
         </>
       )}
